@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerCatalog, saveServerCatalog } from '@/lib/catalog/storage';
 import { CatalogConfig } from '@/lib/catalog/types';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const catalog = getServerCatalog();
+    const { searchParams } = new URL(req.url);
+    const slug = searchParams.get('slug') || undefined;
+    const catalog = getServerCatalog(slug);
     return NextResponse.json({ success: true, catalog });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

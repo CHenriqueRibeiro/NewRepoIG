@@ -129,9 +129,7 @@ export default function IntelligentCatalogAutomator() {
                   price: '149,90',
                   stock: '5',
                   category: 'Vestuário',
-                  description: req.inquiry_text
-                    ? `Peça apresentada no Story. Solicitado por @${req.buyer_username}: "${req.inquiry_text}"`
-                    : 'Peça exclusiva disponível na vitrine.',
+                  description: '',
                 };
               }
             });
@@ -372,7 +370,7 @@ export default function IntelligentCatalogAutomator() {
                   )}
                 </h3>
                 <p className="text-xs text-slate-300 mt-0.5">
-                  Preencha os dados das peças publicadas para a IA responder seus clientes no Direct.
+                  Cadastre as informações da peça para publicar na vitrine e liberar o atendimento automático.
                 </p>
               </div>
 
@@ -551,13 +549,13 @@ export default function IntelligentCatalogAutomator() {
                                 {/* Linha 3: Descrição */}
                                 <div>
                                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                                    Descrição & Detalhes (usada pela IA para tirar dúvidas no Direct):
+                                    Descrição do Produto:
                                   </label>
                                   <textarea
                                     rows={2}
                                     value={current.description}
                                     onChange={(e) => updateFormField(req.id, 'description', e.target.value)}
-                                    placeholder="Tecido, cores, modelagem, caimento ou detalhes importantes..."
+                                    placeholder="Ex: Confeccionado em tecido leve, caimento confortável e acabamento refinado..."
                                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white resize-none"
                                   />
                                 </div>

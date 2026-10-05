@@ -133,7 +133,7 @@ Calça Pantalona Linho,169.90,Calças,3,Calça pantalona linho puro alfaiataria,
   assert.ok(data.rejectedRows[0].reasons.length > 0);
 
   // Verifica que o catálogo foi atualizado via GET /api/catalog
-  const catRes = await fetch(`${BASE_URL}/api/catalog`);
+  const catRes = await fetch(`${BASE_URL}/api/catalog?slug=minha-loja`);
   const catData = await catRes.json();
   const products = catData.catalog.products || [];
 
