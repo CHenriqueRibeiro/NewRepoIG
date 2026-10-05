@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { CatalogConfig, CatalogTheme, isColorDark } from '@/lib/catalog/types';
 import {
   Palette,
@@ -9,6 +9,7 @@ import {
   Store,
   Sparkles,
   Check,
+  AlertCircle,
 } from 'lucide-react';
 import { TYPOGRAPHY_PRESETS, getTypographyPreset } from '@/lib/catalog/typography';
 
@@ -205,11 +206,100 @@ export default function ThemeCustomizer({
 }: ThemeCustomizerProps) {
   const { theme } = config;
 
+  const [nameValidation, setNameValidation] = useState<{
+    isChecking: boolean;
+    isDuplicate: boolean;
+    suggestion: string;
+    message?: string;
+  }>({ isChecking: false, isDuplicate: false, suggestion: '' });
+
+  const [slugValidation, setSlugValidation] = useState<{
+    isChecking: boolean;
+    isDuplicate: boolean;
+    isValid: boolean;
+    suggestion: string;
+    message?: string;
+  }>({ isChecking: false, isDuplicate: false, isValid: false, suggestion: '' });
+
+  // Preenchimento automático com o nome do perfil conectado se estiver genérico ("Minha Loja")
+  useEffect(() => {
+    async function syncProfileName() {
+      if (
+        !config.storeName ||
+        config.storeName === 'Minha Loja' ||
+        !config.slug ||
+        config.slug === 'minha-loja'
+      ) {
+        try {
+          const res = await fetch('/api/auth/instagram/status');
+          const data = await res.json();
+          if (data?.connected && data?.account) {
+            const profileName = data.account.name || data.account.username || 'Quota';
+            const baseSlug = (data.account.username || profileName)
+              .toLowerCase()
+              .replace(/^@/, '')
+              .replace(/[^a-z0-9-_]/g, '-');
+
+            // Valida duplicidade do slug gerado pelo perfil
+            const valRes = await fetch(
+              `/api/catalog/validate-slug?name=${encodeURIComponent(profileName)}&slug=${encodeURIComponent(baseSlug)}&currentSlug=${config.slug || ''}`
+            );
+            const valData = await valRes.json();
+            const finalSlug = valData.suggestedSlug || baseSlug;
+            const finalName = valData.suggestedName || profileName;
+
+            onChangeConfig({
+              ...config,
+              storeName: config.storeName === 'Minha Loja' || !config.storeName ? finalName : config.storeName,
+              slug: config.slug === 'minha-loja' || !config.slug ? finalSlug : config.slug,
+            });
+          }
+        } catch (e) {
+          console.warn('[ThemeCustomizer] Erro ao sincronizar nome do perfil:', e);
+        }
+      }
+    }
+    syncProfileName();
+  }, []);
+
   const updateStoreField = (field: keyof CatalogConfig, value: any) => {
     onChangeConfig({
       ...config,
       [field]: value,
     });
+  };
+
+  const validateField = async (type: 'name' | 'slug', value: string) => {
+    try {
+      const targetName = type === 'name' ? value : config.storeName;
+      const targetSlug = type === 'slug' ? value : config.slug;
+
+      const res = await fetch(
+        `/api/catalog/validate-slug?name=${encodeURIComponent(targetName)}&slug=${encodeURIComponent(targetSlug)}&currentSlug=${config.slug}`
+      );
+      const data = await res.json();
+
+      if (type === 'name') {
+        setNameValidation({
+          isChecking: false,
+          isDuplicate: Boolean(data.isNameDuplicate),
+          suggestion: data.suggestedName || '',
+          message: data.message,
+        });
+      }
+
+      if (type === 'slug' || type === 'name') {
+        setSlugValidation({
+          isChecking: false,
+          isDuplicate: Boolean(data.isSlugDuplicate),
+          isValid: Boolean(data.isValid),
+          suggestion: data.suggestedSlug || '',
+          message: data.message,
+        });
+      }
+    } catch (e) {
+      console.warn('[Validation error]', e);
+    }
   };
 
   const updateThemeField = (field: keyof CatalogTheme, value: any) => {
@@ -264,38 +354,102 @@ export default function ThemeCustomizer({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Nome da Loja
+              Nome da Loja (Perfil)
             </label>
             <input
               type="text"
               value={config.storeName}
-              onChange={(e) => updateStoreField('storeName', e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500/30"
-              placeholder="Ex: Vitryne Boutique"
+              onChange={(e) => {
+                updateStoreField('storeName', e.target.value);
+                if (nameValidation.isDuplicate) {
+                  setNameValidation((prev) => ({ ...prev, isDuplicate: false }));
+                }
+              }}
+              onBlur={(e) => validateField('name', e.target.value)}
+              className={`w-full px-3.5 py-2.5 rounded-xl border text-sm focus:ring-2 transition-all ${
+                nameValidation.isDuplicate
+                  ? 'border-amber-400 bg-amber-50/20 focus:ring-amber-500/30'
+                  : 'border-slate-300 focus:ring-indigo-500/30'
+              }`}
+              placeholder="Ex: Nome da sua loja"
             />
+            {nameValidation.isDuplicate && (
+              <div className="mt-2 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-center justify-between gap-2 animate-fade-in">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>
+                    Já existe outro perfil com este nome. Sugerimos <strong>{nameValidation.suggestion}</strong>.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    updateStoreField('storeName', nameValidation.suggestion);
+                    setNameValidation({ isChecking: false, isDuplicate: false, suggestion: '' });
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-amber-200 hover:bg-amber-300 font-bold text-amber-950 text-xs cursor-pointer shrink-0 transition-colors"
+                >
+                  Usar
+                </button>
+              </div>
+            )}
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
               Link Personalizado / Slug
             </label>
-            <div className="flex rounded-xl border border-slate-300 overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500/30">
-              <span className="bg-slate-100 px-3 py-2.5 text-xs text-slate-500 font-mono flex items-center">
+            <div
+              className={`flex rounded-xl border overflow-hidden focus-within:ring-2 transition-all ${
+                slugValidation.isDuplicate
+                  ? 'border-amber-400 bg-amber-50/20 focus-within:ring-amber-500/30'
+                  : 'border-slate-300 focus-within:ring-indigo-500/30'
+              }`}
+            >
+              <span className="bg-slate-100 px-3 py-2.5 text-xs text-slate-500 font-mono flex items-center shrink-0">
                 vitryne.com/
               </span>
               <input
                 type="text"
                 value={config.slug}
-                onChange={(e) =>
+                onChange={(e) => {
                   updateStoreField(
                     'slug',
                     e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, '-')
-                  )
-                }
+                  );
+                  setSlugValidation((prev) => ({ ...prev, isValid: false, isDuplicate: false }));
+                }}
+                onBlur={(e) => validateField('slug', e.target.value)}
                 className="w-full px-2.5 py-2.5 text-sm border-0 focus:outline-hidden font-mono"
-                placeholder="minha-loja"
+                placeholder="nome-do-perfil"
               />
             </div>
+            {slugValidation.isDuplicate && (
+              <div className="mt-2 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-center justify-between gap-2 animate-fade-in">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>
+                    Link já em uso. Sugerimos <strong>vitryne.com/{slugValidation.suggestion}</strong>.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    updateStoreField('slug', slugValidation.suggestion);
+                    setSlugValidation({ isChecking: false, isDuplicate: false, isValid: true, suggestion: '' });
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-amber-200 hover:bg-amber-300 font-bold text-amber-950 text-xs cursor-pointer shrink-0 transition-colors"
+                >
+                  Usar
+                </button>
+              </div>
+            )}
+            {slugValidation.isValid && !slugValidation.isDuplicate && (
+              <p className="mt-1.5 text-[11px] text-emerald-600 font-medium flex items-center gap-1">
+                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Link exclusivo disponível</span>
+              </p>
+            )}
           </div>
         </div>
 

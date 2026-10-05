@@ -56,6 +56,31 @@ export default function CatalogBuilderPage() {
             ...data.catalog,
             products: cleanedProducts,
           };
+
+          // Se estiver com nome genérico ("Minha Loja"), vincula ao perfil real do Instagram
+          if (
+            !cleanCatalog.storeName ||
+            cleanCatalog.storeName === 'Minha Loja' ||
+            !cleanCatalog.slug ||
+            cleanCatalog.slug === 'minha-loja'
+          ) {
+            try {
+              const authRes = await fetch('/api/auth/instagram/status');
+              const authData = await authRes.json();
+              if (authData?.connected && authData?.account) {
+                const profileName = authData.account.name || authData.account.username || 'Quota';
+                const baseSlug = (authData.account.username || profileName)
+                  .toLowerCase()
+                  .replace(/^@/, '')
+                  .replace(/[^a-z0-9-_]/g, '-');
+                cleanCatalog.storeName = profileName;
+                cleanCatalog.slug = baseSlug;
+              }
+            } catch (err) {
+              console.warn('[CatalogPage] Falha ao sincronizar perfil:', err);
+            }
+          }
+
           setConfig(cleanCatalog);
           const isChosen = Boolean(
             data.catalog.templateChosen ||

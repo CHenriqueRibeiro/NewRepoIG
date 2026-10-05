@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CatalogConfig, CatalogTemplate } from '@/lib/catalog/types';
 import { TEMPLATES } from '@/lib/catalog/templates';
 import {
@@ -21,6 +21,7 @@ import {
   Heart,
   ShieldCheck,
   Sliders,
+  AlertCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
@@ -48,10 +49,50 @@ export default function EasyOnboardingWizard({
     initialConfig?.templateId || 'boutique'
   );
 
-  // Nome da Loja
+  // Nome da Loja (preenchido com o perfil real)
   const [storeName, setStoreName] = useState<string>(
-    initialConfig?.storeName || 'Minha Loja'
+    initialConfig?.storeName && initialConfig.storeName !== 'Minha Loja'
+      ? initialConfig.storeName
+      : ''
   );
+
+  const [nameValidation, setNameValidation] = useState<{
+    isDuplicate: boolean;
+    suggestion: string;
+  }>({ isDuplicate: false, suggestion: '' });
+
+  // Sincroniza com o nome do perfil conectado
+  useEffect(() => {
+    async function fetchProfile() {
+      if (!storeName || storeName === 'Minha Loja') {
+        try {
+          const res = await fetch('/api/auth/instagram/status');
+          const data = await res.json();
+          if (data?.connected && data?.account) {
+            const profileName = data.account.name || data.account.username || 'Quota';
+            setStoreName(profileName);
+          }
+        } catch {}
+      }
+    }
+    fetchProfile();
+  }, []);
+
+  const validateOnboardingStoreName = async (nameToValidate: string) => {
+    try {
+      if (!nameToValidate.trim()) return;
+      const res = await fetch(`/api/catalog/validate-slug?name=${encodeURIComponent(nameToValidate)}`);
+      const data = await res.json();
+      if (data.isNameDuplicate && data.suggestedName) {
+        setNameValidation({
+          isDuplicate: true,
+          suggestion: data.suggestedName,
+        });
+      } else {
+        setNameValidation({ isDuplicate: false, suggestion: '' });
+      }
+    } catch {}
+  };
 
   // WhatsApp para Fechamento de Vendas / Agendamentos
   const [whatsappNumber, setWhatsappNumber] = useState<string>(
@@ -341,9 +382,37 @@ export default function EasyOnboardingWizard({
                 type="text"
                 placeholder={businessType === 'services' ? 'Ex: Barbearia Vip, Studio Glamour' : 'Ex: Aura Boutique, Chic & Belle'}
                 value={storeName}
-                onChange={(e) => setStoreName(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-lg bg-slate-900 border border-slate-600 text-white font-bold text-sm focus:ring-2 focus:ring-indigo-500"
+                onChange={(e) => {
+                  setStoreName(e.target.value);
+                  if (nameValidation.isDuplicate) setNameValidation({ isDuplicate: false, suggestion: '' });
+                }}
+                onBlur={(e) => validateOnboardingStoreName(e.target.value)}
+                className={`w-full px-3.5 py-2.5 rounded-lg bg-slate-900 border text-white font-bold text-sm focus:ring-2 transition-all ${
+                  nameValidation.isDuplicate
+                    ? 'border-amber-400 focus:ring-amber-500'
+                    : 'border-slate-600 focus:ring-indigo-500'
+                }`}
               />
+              {nameValidation.isDuplicate && (
+                <div className="mt-2 p-2 rounded-lg bg-amber-500/20 border border-amber-400/40 text-xs text-amber-200 flex items-center justify-between gap-2 animate-fade-in">
+                  <div className="flex items-center gap-1.5">
+                    <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                    <span>
+                      Já existe outro perfil com este nome. Sugerimos <strong>{nameValidation.suggestion}</strong>.
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStoreName(nameValidation.suggestion);
+                      setNameValidation({ isDuplicate: false, suggestion: '' });
+                    }}
+                    className="px-2 py-0.5 rounded bg-amber-400 text-slate-950 font-bold text-xs cursor-pointer shrink-0 hover:bg-amber-300"
+                  >
+                    Usar
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Grid de Templates */}

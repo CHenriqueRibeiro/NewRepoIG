@@ -23,14 +23,31 @@ interface BioLinkShareProps {
 export default function BioLinkShare({ config }: BioLinkShareProps) {
   const [copied, setCopied] = useState(false);
   const [origin, setOrigin] = useState('');
+  const [profileSlug, setProfileSlug] = useState(config.slug || '');
+  const [profileName, setProfileName] = useState(config.storeName || '');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setOrigin(window.location.origin);
     }
-  }, []);
+    if (!config.slug || config.slug === 'minha-loja' || !config.storeName || config.storeName === 'Minha Loja') {
+      fetch('/api/auth/instagram/status')
+        .then((r) => r.json())
+        .then((data) => {
+          if (data?.connected && data?.account) {
+            const name = data.account.name || data.account.username || 'loja';
+            const slug = (data.account.username || name).toLowerCase().replace(/^@/, '').replace(/[^a-z0-9-_]/g, '-');
+            setProfileName(name);
+            setProfileSlug(slug);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [config.slug, config.storeName]);
 
-  const publicUrl = `${origin}/${config.slug || 'minha-loja'}`;
+  const activeSlug = (config.slug && config.slug !== 'minha-loja') ? config.slug : (profileSlug || 'loja');
+  const activeName = (config.storeName && config.storeName !== 'Minha Loja') ? config.storeName : (profileName || 'Sua Loja');
+  const publicUrl = `${origin}/${activeSlug}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(publicUrl);
@@ -67,7 +84,7 @@ export default function BioLinkShare({ config }: BioLinkShareProps) {
 
           <div className="flex items-center gap-2">
             <a
-              href={`/${config.slug || 'minha-loja'}`}
+              href={`/${activeSlug}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white text-slate-950 font-bold text-xs hover:bg-slate-100 transition-all shadow-md"
@@ -178,7 +195,7 @@ export default function BioLinkShare({ config }: BioLinkShareProps) {
 
           <div className="space-y-2 text-center sm:text-left">
             <h4 className="font-bold text-slate-900 text-sm">
-              {config.storeName} • Catálogo Oficial
+              {activeName} • Catálogo Oficial
             </h4>
             <p className="text-xs text-slate-600 leading-relaxed max-w-md">
               Aponte a câmera do seu smartphone para acessar a coleção completa, checar tamanhos em estoque e fazer pedidos diretos.
@@ -198,7 +215,7 @@ export default function BioLinkShare({ config }: BioLinkShareProps) {
         </h4>
 
         <div className="p-4 rounded-xl bg-white border border-slate-200 text-xs font-mono text-slate-700 whitespace-pre-line leading-relaxed">
-          {`${config.storeName}\n${config.bio}\nToque no link para ver peças e montar sua sacola:\n${publicUrl}`}
+          {`${activeName}\n${config.bio}\nToque no link para ver peças e montar sua sacola:\n${publicUrl}`}
         </div>
       </div>
     </div>

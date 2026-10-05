@@ -64,7 +64,7 @@ function LoginContent() {
 
     try {
       const cleanHandle = handleInput.trim().replace(/^@/, '');
-      const storeName = storeNameInput.trim() || cleanHandle.split(/[._]/).map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ') || 'Minha Loja';
+      const storeName = storeNameInput.trim() || cleanHandle.split(/[._]/).map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ') || cleanHandle;
 
       const res = await fetch('/api/auth/instagram/connect', {
         method: 'POST',
