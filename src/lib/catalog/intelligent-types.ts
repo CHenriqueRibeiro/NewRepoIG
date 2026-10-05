@@ -6,20 +6,26 @@
 */
 
 export interface ProductDynamicAttributes {
-  categoria?: string; // ex: blusa, vestido, calçado, semijoia, celular, sofá
+  tipo_item?: 'produto' | 'servico' | 'plano' | string; // Suporte universal: produto físico, serviço com agendamento, plano digital
+  categoria?: string; // ex: blusa, vestido, calçado, semijoia, celular, corte de cabelo, manicure, detailing
   subcategoria?: string;
   cor_principal?: string; // ex: amarelo, preto, dourado, off-white
   cores_secundarias?: string[];
-  gola?: string; // ex: V, redonda, polo, canoa, alta
-  manga?: string; // ex: curta, longa, regata, bufante
+  gola?: string; // ex: V, redonda, polo, canoa, alta (se vestuário)
+  manga?: string; // ex: curta, longa, regata, bufante (se vestuário)
   cor_manga?: string;
-  detalhes?: string[]; // ex: ['branco', 'babado', 'bolso frontal', 'fivela']
+  detalhes?: string[]; // ex: ['branco', 'babado', 'bolso frontal', 'fivela', 'corte degrade', 'tela oled']
   estampa?: string; // ex: floral, lisa, xadrez, animal print, listrada
   modelagem?: string; // ex: regular, slim, oversized, cropped, evasê
-  material?: string; // ex: algodão, linho, seda, viscose, ouro 18k, couro
+  material?: string; // ex: algodão, linho, seda, ouro 18k, titânio, couro
+  duracao?: string; // para serviços (ex: '45 min', '1h30')
+  procedimento?: string; // para estética, salão e barbearia (ex: 'Degradê na navalha', 'Esmaltação em gel')
+  marca?: string; // para tecnologia, cosméticos, perfumaria (ex: 'Apple', 'Natura', 'Boticário')
+  volumetria?: string; // para cosméticos e perfumaria (ex: '100ml', '50g')
+  especificacoes?: string[]; // para tecnologia, eletro e acessórios (ex: ['128GB', 'Bivolt', 'Bluetooth 5.3'])
   genero?: string; // ex: feminino, masculino, unissex
-  estilo?: string; // ex: casual, festa, alfaiataria, praia, esportivo
-  [key: string]: any; // Extensível para calçados, bolsas, joias, carros, eletrônicos, móveis, etc.
+  estilo?: string; // ex: casual, festa, alfaiataria, esportivo, minimalista
+  [key: string]: any; // Extensível para qualquer segmento sem restrições
 }
 
 export interface ProductVariantEntity {

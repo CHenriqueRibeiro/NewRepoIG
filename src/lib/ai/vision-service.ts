@@ -1,4 +1,4 @@
-import { ProductDynamicAttributes } from '../catalog/intelligent-types';
+import type { ProductDynamicAttributes } from '../catalog/intelligent-types.ts';
 
 export interface VisionAnalysisResult {
   attributes: ProductDynamicAttributes;
@@ -16,6 +16,24 @@ export interface VisionAnalysisResult {
 export function buildCanonicalDescription(attrs: ProductDynamicAttributes): string {
   const parts: string[] = [];
 
+  const isService = attrs.tipo_item === 'servico' || attrs.tipo_item === 'serviço' || Boolean(attrs.procedimento || attrs.duracao);
+
+  if (isService) {
+    const rawCat = attrs.categoria || attrs.procedimento || 'Serviço';
+    const cat = /^(geral|novidades|produto)$/i.test(rawCat) ? 'Serviço' : rawCat;
+    const sub = attrs.subcategoria ? ` (${attrs.subcategoria})` : '';
+    parts.push(`Serviço de ${cat}${sub}`);
+    if (attrs.procedimento && attrs.procedimento.toLowerCase() !== cat.toLowerCase()) {
+      parts.push(`procedimento ${attrs.procedimento}`);
+    }
+    if (attrs.duracao) parts.push(`duração média ${attrs.duracao}`);
+    if (attrs.detalhes && attrs.detalhes.length > 0) {
+      parts.push(`com ${attrs.detalhes.join(', ')}`);
+    }
+    if (attrs.estilo) parts.push(`estilo ${attrs.estilo}`);
+    return parts.join(', ') + '.';
+  }
+
   const rawCat = attrs.categoria || 'Peça';
   const cat = /^(geral|novidades|produto)$/i.test(rawCat) ? 'Peça' : rawCat;
   const sub = attrs.subcategoria ? ` (${attrs.subcategoria})` : '';
@@ -24,6 +42,8 @@ export function buildCanonicalDescription(attrs: ProductDynamicAttributes): stri
 
   parts.push(`${cat}${sub}${genero}${cor}`);
 
+  if (attrs.marca) parts.push(`marca ${attrs.marca}`);
+  if (attrs.volumetria) parts.push(`volume ${attrs.volumetria}`);
   if (attrs.gola) parts.push(`gola ${attrs.gola}`);
   if (attrs.manga) parts.push(`manga ${attrs.manga}`);
   if (attrs.estampa && attrs.estampa !== 'lisa') parts.push(`estampa ${attrs.estampa}`);
@@ -149,22 +169,27 @@ export async function analyzeMediaWithVision(params: {
 
   if (resolvedApiKey && resolvedApiKey.startsWith('sk-') && !resolvedApiKey.includes('mock')) {
     try {
-      const systemPrompt = `Você é um especialista em visão computacional e catálogo de produtos e moda para e-commerce.
-Sua missão é inspecionar minuciosamente a imagem fornecida (e a legenda opcional) e extrair os atributos estruturados do produto principal em formato JSON.
-O JSON deve ser dinâmico e flexível para qualquer nicho (roupas, calçados, bolsas, semijoias, perfumaria, cosméticos, eletrônicos, etc.).
+      const systemPrompt = `Você é um especialista em visão computacional e catálogo comercial para e-commerce, comércio local e serviços.
+Sua missão é inspecionar minuciosamente a imagem fornecida (e a legenda opcional) e extrair os atributos estruturados do item principal em formato JSON.
+O JSON deve ser dinâmico e flexível para qualquer nicho de PRODUTOS (roupas, calçados, bolsas, semijoias, perfumaria, cosméticos, eletrônicos, gastronomia, decoração, acessórios, automotivo, etc.) ou SERVIÇOS (barbearia, salão de beleza, estética, unhas, sobrancelhas, massagem, detailing automotivo, serviços técnicos, agendamentos, etc.).
 
 Retorne RIGOROSAMENTE no formato JSON:
 {
-  "categoria": string, // ex: perfumaria, blusa, vestido, calça, tênis, bolsa, semijoia
+  "tipo_item": "produto" ou "servico",
+  "categoria": string, // ex: corte masculino, manicure, lash design, perfumaria, blusa, vestido, calçado, smartphone, semijoia, refeição
   "subcategoria": string ou null,
   "titulo_sugerido": string,
   "preco_estimado_reais": number,
-  "cor_principal": string,
+  "cor_principal": string ou null,
   "cores_secundarias": string[],
   "detalhes": string[],
-  "estampa": string,
+  "estampa": string ou null,
   "modelagem": string ou null,
   "material": string ou null,
+  "duracao": string ou null, // se serviço (ex: '45 min')
+  "procedimento": string ou null, // se serviço/estética (ex: 'Degradê na navalha')
+  "marca": string ou null,
+  "volumetria": string ou null,
   "genero": string ou null,
   "estilo": string ou null
 }`;
@@ -172,15 +197,26 @@ Retorne RIGOROSAMENTE no formato JSON:
       const userContent: any[] = [
         {
           type: 'text',
-          text: `Analise o produto exibido nesta imagem.${
-            caption ? ` Legenda informada na postagem: "${caption}"` : ''
-          } Extraia todos os atributos visuais no schema JSON especificado.`,
+          text: `Analise o item (produto ou serviço) exibido nesta imagem.${caption ? ` Legenda informada na postagem: "${caption}"` : ''
+            } Extraia todos os atributos visuais e comerciais no schema JSON especificado.`,
         },
         {
           type: 'image_url',
-          image_url: { url: imageUrl },
+          image_url: { url: imageUrl, detail: 'high' },
         },
       ];
+
+      const isReasoningModel = true; // gpt-6.1-sol
+      const requestBody: Record<string, any> = {
+        model: 'gpt-6.1-sol',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userContent },
+        ],
+        response_format: { type: 'json_object' },
+        reasoning_effort: 'high',
+        max_completion_tokens: 800,
+      };
 
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -188,16 +224,7 @@ Retorne RIGOROSAMENTE no formato JSON:
           'Content-Type': 'application/json',
           Authorization: `Bearer ${resolvedApiKey}`,
         },
-        body: JSON.stringify({
-          model: 'gpt-6-luna',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userContent },
-          ],
-          response_format: { type: 'json_object' },
-          temperature: 0.1,
-          max_tokens: 500,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (res.ok) {
@@ -216,6 +243,9 @@ Retorne RIGOROSAMENTE no formato JSON:
             ? Math.round(parsed.preco_estimado_reais * 100)
             : 0,
         };
+      } else {
+        const errText = await res.text();
+        console.warn(`[Vision API Error ${res.status}]`, errText);
       }
     } catch (err) {
       console.warn('[Vision API Warning, using heuristic analyzer]', err);
@@ -389,8 +419,43 @@ function generateHeuristicAttributes(imageUrl: string, caption?: string): Vision
     suggestedTitle = 'Brinco Argola Ouro 18k';
     estimatedPriceCents = 7990;
   }
+  // 7. Detecção de Serviços de Barbearia / Salão / Estética / Manicure / Detailing
+  else if (/\b(corte|barba|cabelo|barbearia|manicure|pedicure|unha|unhas|lash|cilios|sobrancelha|limpeza de pele|estetica|estética|detailing|polimento|lavagem|agendamento)\b/i.test(text)) {
+    categoria = 'serviço';
+    subcategoria = text.includes('barba') || text.includes('corte') ? 'barbearia e cabelo' : text.includes('unha') || text.includes('manicure') ? 'manicure e unhas' : 'estética e cuidados';
+    cor_principal = undefined;
+    gola = undefined;
+    manga = undefined;
+    detalhes = ['atendimento com horário agendado', 'profissionais qualificados', 'materiais esterilizados e descartáveis'];
+    estampa = undefined;
+    modelagem = undefined;
+    genero = 'unissex';
+    estilo = 'atendimento profissional';
+    const firstLine = text ? text.split('\n')[0].replace(/[#@]/g, '').trim() : '';
+    suggestedTitle = firstLine && firstLine.length < 50 ? firstLine : (text.includes('barba') ? 'Corte & Barba' : 'Procedimento Especializado');
+    estimatedPriceCents = estimatedPriceCents || 6000;
+  }
+  // 8. Detecção de Eletrônicos / Smartphones
+  else if (/\b(celular|smartphone|iphone|xiaomi|samsung|galaxy|notebook|fone|bluetooth|apple)\b/i.test(text)) {
+    categoria = 'eletrônicos';
+    subcategoria = 'smartphones e gadgets';
+    cor_principal = 'preto espacial';
+    gola = undefined;
+    manga = undefined;
+    detalhes = ['garantia de fábrica', 'acessórios inclusos', 'pronta entrega'];
+    estampa = undefined;
+    modelagem = undefined;
+    material = 'vidro e alumínio aeroespacial';
+    genero = 'unissex';
+    estilo = 'tecnologia';
+    const firstLine = text ? text.split('\n')[0].replace(/[#@]/g, '').trim() : '';
+    suggestedTitle = firstLine && firstLine.length < 50 ? firstLine : 'Smartphone / Gadget Tech';
+    estimatedPriceCents = estimatedPriceCents || 249900;
+  }
 
+  const isService = categoria === 'serviço' || /\b(corte|barba|cabelo|manicure|pedicure|unha|estetica|agendamento)\b/i.test(categoria);
   const attrs: ProductDynamicAttributes = {
+    tipo_item: isService ? 'servico' : 'produto',
     categoria,
     subcategoria,
     cor_principal,
@@ -403,6 +468,8 @@ function generateHeuristicAttributes(imageUrl: string, caption?: string): Vision
     material,
     genero,
     estilo,
+    duracao: isService ? '45 min' : undefined,
+    procedimento: isService ? suggestedTitle : undefined,
   };
 
   const canonicalDescription = buildCanonicalDescription(attrs);

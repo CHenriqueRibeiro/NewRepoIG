@@ -179,9 +179,20 @@ Analise a intenção e responda em JSON:
       const userMessageContent: any = imageUrl
         ? [
             { type: 'text', text: userPrompt },
-            { type: 'image_url', image_url: { url: imageUrl } },
+            { type: 'image_url', image_url: { url: imageUrl, detail: 'high' } },
           ]
         : userPrompt;
+
+      const requestBody: Record<string, any> = {
+        model: 'gpt-6.1-sol',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMessageContent },
+        ],
+        response_format: { type: 'json_object' },
+        reasoning_effort: 'low',
+        max_completion_tokens: 400,
+      };
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -189,16 +200,7 @@ Analise a intenção e responda em JSON:
           'Content-Type': 'application/json',
           Authorization: `Bearer ${apiKey}`,
         },
-        body: JSON.stringify({
-          model: 'gpt-6-luna',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userMessageContent },
-          ],
-          response_format: { type: 'json_object' },
-          temperature: 0.3,
-          max_tokens: 350,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (response.ok) {
@@ -206,6 +208,9 @@ Analise a intenção e responda em JSON:
         const content = data.choices[0]?.message?.content;
         const parsed = JSON.parse(content);
         return AIInteractionResponseSchema.parse(parsed);
+      } else {
+        const errText = await response.text();
+        console.warn(`[AI BYOK Error ${response.status}]`, errText);
       }
     } catch (e) {
       console.warn('[AI BYOK Error] Fallback para heurística local:', e);

@@ -13,6 +13,29 @@ import { intelligentCatalogService } from '../catalog/intelligent-service';
 import { getServerCatalog, saveServerCatalog } from '../catalog/storage';
 import { ProductItem } from '../catalog/types';
 
+/**
+ * Faz download de uma URL de imagem da Meta CDN (signed, efêmera) e converte para data URL base64.
+ * Isso garante que a imagem permaneça visível no dashboard mesmo após expirar a URL assinada da Meta.
+ * Silencia erros sem quebrar o fluxo principal.
+ */
+async function downloadAndEncodeAsDataUrl(url: string): Promise<string | null> {
+  if (!url || url.startsWith('data:')) return url || null;
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (!res.ok) return null;
+    const contentType = res.headers.get('content-type') || 'image/webp';
+    const buffer = await res.arrayBuffer();
+    const base64 = Buffer.from(buffer).toString('base64');
+    return `data:${contentType};base64,${base64}`;
+  } catch (err) {
+    console.warn('[Sync Pipeline] Não foi possível baixar a imagem para persistir:', (err as Error).message);
+    return null;
+  }
+}
+
 export interface ProcessMediaParams {
   storeId: string;
   catalogSlug?: string;
@@ -98,13 +121,25 @@ export async function processIncomingInstagramMedia(
     };
   }
 
-  // 2. EXTRAÇÃO DE FRAMES REPRESENTATIVOS (VÍDEO / STORY / REEL)
+  // 2. EXTRAÇÃO DE FRAMES REPRESENTATIVOS (SÓ PARA VÍDEOS / REELS VERDADEIROS)
+  // Stories podem ser imagem estática (webp/jpeg) ou vídeo.
+  // Se mediaType === 'STORY' com URL de imagem do CDN Meta (lookaside.fbsbx.com, fbcdn), usa a imagem diretamente.
   let frames: ExtractedVideoFrame[] = [];
-  let visualAnalysisTargetUrl = mediaUrl;
+  let visualAnalysisTargetUrl = thumbnailUrl || mediaUrl;
 
-  const isVideo = mediaType === 'VIDEO' || mediaType === 'REEL' || mediaType === 'STORY';
+  const isActualVideo =
+    mediaType === 'VIDEO' ||
+    mediaType === 'REEL' ||
+    (mediaType === 'STORY' &&
+      !mediaUrl.includes('lookaside.fbsbx.com') &&
+      !mediaUrl.includes('fbcdn.net') &&
+      !mediaUrl.endsWith('.webp') &&
+      !mediaUrl.endsWith('.jpg') &&
+      !mediaUrl.endsWith('.jpeg') &&
+      !mediaUrl.endsWith('.png') &&
+      (mediaUrl.includes('.mp4') || mediaUrl.includes('video_id=') || thumbnailUrl != null));
 
-  if (isVideo) {
+  if (isActualVideo) {
     frames = await sampleRepresentativeFrames(mediaUrl, {
       intervalSeconds: 3,
       maxFrames: 3,
@@ -112,9 +147,28 @@ export async function processIncomingInstagramMedia(
     });
     // Usa o frame representativo de melhor qualidade
     visualAnalysisTargetUrl = frames[0]?.url || thumbnailUrl || mediaUrl;
+  } else {
+    // Para imagens estáticas (Story foto / Post), usa a URL diretamente
+    visualAnalysisTargetUrl = mediaUrl || thumbnailUrl || '';
+    console.log(`🖼️ [Pipeline] Mídia de imagem detectada (não-vídeo). Usando URL original: ${visualAnalysisTargetUrl.slice(0, 70)}...`);
   }
 
-  // 3. ANÁLISE DE IMAGEM VIA OPENAI VISION (ATRIBUTOS DINÂMICOS EM JSON)
+  // 3. PERSISTÊNCIA DA IMAGEM: Download da URL efêmera da Meta CDN para base64
+  // As URLs lookaside.fbsbx.com são assinadas com HMAC e expiram em horas.
+  // Fazer o download imediato garante que a imagem aconteça no dashboard de pendências mesmo após expirar.
+  let persistedImageUrl: string = visualAnalysisTargetUrl;
+  if (visualAnalysisTargetUrl.includes('lookaside.fbsbx.com') || visualAnalysisTargetUrl.includes('fbcdn.net')) {
+    console.log(`⬇️ [Pipeline] Fazendo download da imagem efêmera da Meta CDN...`);
+    const encoded = await downloadAndEncodeAsDataUrl(visualAnalysisTargetUrl);
+    if (encoded) {
+      persistedImageUrl = encoded;
+      console.log(`✅ [Pipeline] Imagem salva como base64 (${Math.round(encoded.length / 1024)}kb)`);
+    } else {
+      console.warn(`⚠️ [Pipeline] Não foi possível baixar a imagem CDN. Usando URL original (pode expirar).`);
+    }
+  }
+
+  // 4. ANÁLISE DE IMAGEM VIA OPENAI VISION (ATRIBUTOS DINÂMICOS EM JSON)
   console.log(`🧠 [Vision] Analisando imagem e extraindo atributos estruturados...`);
   const visionResult = await analyzeMediaWithVision({
     imageUrl: visualAnalysisTargetUrl,
@@ -136,6 +190,32 @@ export async function processIncomingInstagramMedia(
     storeId,
     5
   );
+
+  // Se houver produto no catálogo com a mesma imagem base (mesma foto já cadastrada)
+  try {
+    const allExistingProducts = await intelligentCatalogService.listProducts(undefined, catalogSlug);
+    const cleanMediaBase = (mediaUrl || '').split('?')[0];
+    const sameImageCandidate = cleanMediaBase
+      ? allExistingProducts.find((p) => {
+          const pImg = (p.image_url || '').split('?')[0];
+          return pImg && (pImg === cleanMediaBase || cleanMediaBase.includes(pImg) || pImg.includes(cleanMediaBase));
+        })
+      : null;
+
+    if (sameImageCandidate) {
+      const existingIdx = candidatesFromHnsw.findIndex((c) => c.product.id === sameImageCandidate.id);
+      if (existingIdx >= 0) {
+        candidatesFromHnsw[existingIdx].similarity = Math.max(candidatesFromHnsw[existingIdx].similarity, 0.98);
+      } else {
+        candidatesFromHnsw.unshift({
+          product: sameImageCandidate,
+          similarity: 0.98,
+        });
+      }
+    }
+  } catch (err) {
+    // silencioso
+  }
 
   console.log(`🎯 [HNSW Candidatos Encontrados]: ${candidatesFromHnsw.length} produtos retornados.`);
   for (const c of candidatesFromHnsw) {
@@ -201,7 +281,7 @@ export async function processIncomingInstagramMedia(
           ? visionResult.detectedCategory
           : 'Lançamentos',
       status: priceCents > 0 ? 'active' : 'inactive',
-      image_url: visualAnalysisTargetUrl || mediaUrl,
+      image_url: persistedImageUrl || mediaUrl,
       attributes: visionResult.attributes,
       variants: [
         {
@@ -215,7 +295,7 @@ export async function processIncomingInstagramMedia(
         {
           id: `img_story_${Date.now()}`,
           product_id: newProductId,
-          url: visualAnalysisTargetUrl || mediaUrl,
+          url: persistedImageUrl || mediaUrl,
           is_primary: true,
           source_type: 'instagram_story',
         },
@@ -235,7 +315,7 @@ export async function processIncomingInstagramMedia(
           storeId,
           productId: autoCreatedProduct.id,
           productTitle: autoCreatedProduct.title,
-          productImageUrl: autoCreatedProduct.image_url,
+          productImageUrl: persistedImageUrl || autoCreatedProduct.image_url,
           buyerUsername: 'Lojista',
           buyerId: 'system_sync',
           inquiryText: `Nova peça do Story/Post (${cleanTitle}) aguardando definição de valor.`,
@@ -304,7 +384,7 @@ export async function processIncomingInstagramMedia(
     instagram_media_id: instagramMediaId,
     media_type: mediaType,
     media_url: mediaUrl,
-    thumbnail_url: thumbnailUrl || visualAnalysisTargetUrl,
+    thumbnail_url: persistedImageUrl || thumbnailUrl || visualAnalysisTargetUrl,
     permalink,
     caption,
     timestamp: timestamp || new Date().toISOString(),

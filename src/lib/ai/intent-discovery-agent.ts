@@ -125,7 +125,17 @@ const KNOWN_CATEGORIES = [
   'rasteirinha', 'salto', 'macacao', 'macacoes', 'jaqueta', 'jaquetas', 'moletom',
   'relogio', 'relogios', 'oculos', 'calcado', 'calcados', 'bone', 'bones',
   'chapeu', 'chapeus', 'cinto', 'cintos', 'carteira', 'carteiras',
-  'maquiagem', 'maquiagens', 'perfume', 'perfumes', 'roupa', 'roupas', 'look', 'looks'
+  'maquiagem', 'maquiagens', 'perfume', 'perfumes', 'roupa', 'roupas', 'look', 'looks',
+  // Serviços / Agendamentos / Cuidados / Estética
+  'corte', 'cortes', 'cabelo', 'cabelos', 'barba', 'barbas', 'barbearia', 'manicure',
+  'pedicure', 'unha', 'unhas', 'lash', 'cilios', 'sobrancelha', 'sobrancelhas',
+  'estetica', 'massagem', 'limpeza de pele', 'drenagem', 'depilacao', 'detailing',
+  'polimento', 'lavagem', 'aluguel', 'servico', 'servicos',
+  // Eletrônicos / Informática / Casa / Gastronomia
+  'celular', 'celulares', 'smartphone', 'smartphones', 'iphone', 'notebook', 'notebooks',
+  'fone', 'fones', 'headphone', 'carregador', 'capinha', 'capinhas', 'bolo', 'bolos',
+  'doce', 'doces', 'torta', 'tortas', 'hamburguer', 'pizza', 'lanche', 'lanches',
+  'cafe', 'vela', 'velas', 'decoracao', 'caneca', 'canecas', 'quadro', 'quadros', 'joia', 'joias'
 ];
 
 const GREETING_OR_STOP_WORDS = new Set([
@@ -338,7 +348,7 @@ export class CustomerIntentDiscoveryAgent {
     // Identificação de nova categoria ou produto com tolerância extrema a erros de digitação
     const rawQueried = extractQueriedItemFromQuestion(cleanWords);
     const queriedItem = rawQueried ? (findFuzzyCategoryMatch(rawQueried) || rawQueried) : undefined;
-    const productNounRegex = /\b(vestido|vestidos|blusa|blusas|calca|calcas|saia|saias|cropped|t-shirt|conjunto|conjuntos|short|shorts|camisa|camisas|lingerie|biquini|biquinis|semijoia|semijoias|brinco|brincos|colar|colares|pulseira|pulseiras|anel|aneis|bolsa|bolsas|sapato|sapatos|sandalia|sandalias|tenis|bota|botas|rasteirinha|salto|macacao|macacoes|jaqueta|jaquetas|moletom|relogio|relogios|oculos|calcado|calcados|bone|bones|chapeu|chapeus|cinto|cintos|carteira|carteiras|maquiagem|maquiagens|perfume|perfumes|look|looks|roupa|roupas|moda|acessorio|acessorios|peca|pecas|modelo|modelos)\b/i;
+    const productNounRegex = /\b(vestido|vestidos|blusa|blusas|calca|calcas|saia|saias|cropped|t-shirt|conjunto|conjuntos|short|shorts|camisa|camisas|lingerie|biquini|biquinis|semijoia|semijoias|brinco|brincos|colar|colares|pulseira|pulseiras|anel|aneis|bolsa|bolsas|sapato|sapatos|sandalia|sandalias|tenis|bota|botas|rasteirinha|salto|macacao|macacoes|jaqueta|jaquetas|moletom|relogio|relogios|oculos|calcado|calcados|bone|bones|chapeu|chapeus|cinto|cintos|carteira|carteiras|maquiagem|maquiagens|perfume|perfumes|look|looks|roupa|roupas|moda|acessorio|acessorios|peca|pecas|modelo|modelos|corte|cortes|cabelo|cabelos|barba|barbas|barbearia|manicure|pedicure|unha|unhas|lash|cilios|sobrancelha|sobrancelhas|estetica|massagem|limpeza de pele|drenagem|depilacao|detailing|polimento|lavagem|aluguel|celular|celulares|smartphone|smartphones|iphone|notebook|notebooks|fone|fones|headphone|carregador|capinha|capinhas|bolo|bolos|doce|doces|torta|tortas|hamburguer|pizza|lanche|lanches|cafe|vela|velas|decoracao|caneca|canecas|quadro|quadros|joia|joias)\b/i;
     const catMatch = cleanWords.match(productNounRegex);
     let category = queriedItem || (catMatch ? catMatch[1].toLowerCase() : undefined);
 
@@ -473,7 +483,21 @@ export class CustomerIntentDiscoveryAgent {
       };
     }
 
-    // 9. Intenção de compra / reserva / fechamento
+    // 9. Dúvida sobre serviços / procedimentos / agendamento
+    const serviceRegex = /\b(agendar|agendamento|horario|horarios|marcar|procedimento|servico|servicos|corte|cabelo|barba|barbearia|unha|manicure|pedicure|limpeza de pele|massagem|designer|sobrancelha|lash|depilacao|make|maquiagem|horario livre|tem vaga|vaga amanha|vaga hoje|qual horario tem)\b/i;
+    if (serviceRegex.test(cleanWords)) {
+      return {
+        shouldReply: true,
+        primaryIntent: 'service_inquiry',
+        conversationStage: 'negotiating',
+        entities: { category, occasionOrStyle, attributes, size: detectedSize, specificQuery: cleanWords, isContinuityOfPreviousProduct, isExplicitCatalogRequest: false },
+        confidence: 0.97,
+        reasoning: 'Interesse em agendar ou consultar disponibilidade de serviços.',
+        suggestedCommercialAction: 'answer_service',
+      };
+    }
+
+    // 10. Intenção de compra / reserva / fechamento de produtos
     if (hasPurchaseInquiry) {
       const isDirectCheckout = /\b(quero comprar|manda o link|passa o link|link de compra|reserva|reservar|fechar|levar|fazer pedido|separar pra mim|como compro|como comprar|como faco pra comprar)\b/i.test(cleanWords);
       const genericNouns = new Set(['roupa', 'roupas', 'peca', 'pecas', 'look', 'looks', 'moda', 'produto', 'produtos', 'item', 'itens', 'modelo', 'modelos']);
@@ -504,22 +528,6 @@ export class CustomerIntentDiscoveryAgent {
         confidence: 0.98,
         reasoning: isDirectCheckout ? 'Cliente pronto para checkout/reserva.' : 'Cliente iniciando jornada de compra.',
         suggestedCommercialAction: isDirectCheckout ? 'send_product_checkout' : (demandInquiryAlreadySent ? 'recommend_products' : 'ask_qualifying_question'),
-      };
-    }
-
-
-
-    // 10. Dúvida sobre serviços / procedimentos / agendamento
-    const serviceRegex = /\b(agendar|agendamento|horario|horarios|marcar|atende|atendimento|procedimento|servico|servicos|corte|cabelo|barba|unha|manicure|pedicure|limpeza de pele|massagem|designer|sobrancelha|lash|depilacao|make|maquiagem|horario livre|tem vaga|vaga amanha|vaga hoje|qual horario tem)\b/i;
-    if (serviceRegex.test(cleanWords)) {
-      return {
-        shouldReply: true,
-        primaryIntent: 'service_inquiry',
-        conversationStage: 'negotiating',
-        entities: { category, occasionOrStyle, attributes, size: detectedSize, specificQuery: cleanWords, isContinuityOfPreviousProduct, isExplicitCatalogRequest: false },
-        confidence: 0.97,
-        reasoning: 'Interesse em agendar ou consultar disponibilidade de serviços.',
-        suggestedCommercialAction: 'answer_service',
       };
     }
 
@@ -614,16 +622,17 @@ export class CustomerIntentDiscoveryAgent {
     const currentTurn = (conversationContext?.metadata?.turn_count || 0) + 1;
     const prevProductTitle = conversationContext?.current_product?.title || 'nenhum';
 
-    const systemPrompt = `Você é o Agente de Inteligência e Qualificação Comercial de uma loja online.
+    const systemPrompt = `Você é o Agente de Inteligência e Qualificação Comercial de uma loja ou estabelecimento comercial de produtos e serviços.
 Seu ÚNICO papel é analisar mensagens de clientes no Instagram Direct/WhatsApp e extrair com precisão a intenção, entidades e a próxima ação comercial recomendada.
 
 DIRETRIZES DE QUALIFICAÇÃO HUMANA:
-1. Em saudações iniciais ('Oi', 'Olá', 'Bom dia', 'Boa tarde', 'Boa noite'), a ação deve ser SEMPRE 'greet_warmly' (NUNCA mandar links no início).
-2. Se o cliente disser de forma ampla que procura uma roupa/peça mas sem especificar, a ação é 'ask_qualifying_question' (para entender estilo/tamanho/ocasião).
-3. Se o cliente especificou o que quer (ex: vestido de festa, blusa, calça, tamanho M), a ação é 'recommend_products'.
-4. Se o cliente pedir expressamente o link ou catálogo ('manda o site', 'onde vejo as fotos'), a ação é 'send_catalog_link'.
-5. Se for dúvida de frete/motoboy, a ação é 'answer_shipping'.
-6. Se for encerramento ou spam/flerte, shouldReply deve ser false e a ação 'stay_silent'.
+1. Em saudações iniciais ('Oi', 'Olá', 'Bom dia', 'Boa tarde', 'Boa noite') ou perguntas gerais sobre como a loja/atendimento funciona ('como funciona?', 'como é o atendimento de vocês?'), primaryIntent DEVE ser 'greeting' e a ação comercial 'greet_warmly' (NUNCA mandar links no início).
+2. Se o cliente disser de forma ampla que procura algo mas sem especificar, a ação é 'ask_qualifying_question'.
+3. Se o cliente especificou um produto que quer comprar (vestido, celular, perfume, calçado), a ação é 'recommend_products'.
+4. Se for dúvida sobre agendamento, horários, disponibilidade na agenda, procedimentos ou serviços específicos (ex: corte de cabelo, barba, barbearia, manicure, unhas, sobrancelha, massagem, estética, detailing), primaryIntent DEVE ser SEMPRE 'service_inquiry' e a ação comercial 'answer_service'.
+5. Se o cliente pedir expressamente o link ou catálogo ('manda o site', 'onde vejo as fotos/serviços'), a ação é 'send_catalog_link'.
+6. Se for dúvida de frete/motoboy/localização, a ação é 'answer_shipping'.
+7. Se for encerramento ou spam/flerte, shouldReply deve ser false e a ação 'stay_silent'.
 
 Responda ESTRITAMENTE em formato JSON com o schema:
 {
@@ -652,22 +661,24 @@ Responda ESTRITAMENTE em formato JSON com o schema:
 Mensagem do Cliente:
 "${rawMessage}"`;
 
+    const requestBody: Record<string, any> = {
+      model: 'gpt-6.1-sol',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      response_format: { type: 'json_object' },
+      reasoning_effort: 'low',
+      max_completion_tokens: 300,
+    };
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({
-        model: 'gpt-6-luna',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        response_format: { type: 'json_object' },
-        temperature: 0.1,
-        max_tokens: 300,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (response.ok) {

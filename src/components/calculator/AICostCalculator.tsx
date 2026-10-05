@@ -9,7 +9,7 @@ export default function AICostCalculator() {
   const [comments, setComments] = useState<number>(500);
   const [stories, setStories] = useState<number>(300);
   const [dmsPerLead, setDmsPerLead] = useState<number>(3);
-  const [selectedModel, setSelectedModel] = useState<string>('gpt-6-luna');
+  const [selectedModel, setSelectedModel] = useState<string>('gpt-6.1-sol');
 
   const usdToBrl = 5.5;
 
@@ -83,9 +83,9 @@ export default function AICostCalculator() {
                 value={selectedModel}
                 onChange={(e) => setSelectedModel(e.target.value)}
               >
-                <option value="gpt-6-luna">OpenAI GPT-6 Luna (Ultrarrápido e Ultraeconômico • Recomendado)</option>
+                <option value="gpt-6.1-sol">OpenAI GPT-6.1 Sol (Raciocínio & Visão de Alta Precisão • Recomendado)</option>
+                <option value="gpt-5.4-mini">OpenAI GPT-5.4 Mini (Ultrarrápido & Econômico)</option>
                 <option value="gemini-1.5-flash">Google Gemini 1.5 Flash</option>
-                <option value="groq-llama">Groq LLaMA 3.3</option>
               </Select>
             </div>
           </div>

@@ -132,8 +132,13 @@ export function compareProductAttributes(
     specificsScore * specificsWeight;
 
   // Penalidade severa se a categoria for expressamente conflitante (ex: tênis vs vestido)
-  if (!categoryMatch && extractedCat && prodCat) {
+  if (!categoryMatch && extractedCat && prodCat && visualSimilarity < 0.90) {
     totalScore = totalScore * 0.4;
+  }
+
+  // Se a similaridade de imagem/vetor for altíssima (mesma foto já cadastrada no catálogo)
+  if (visualSimilarity >= 0.90) {
+    totalScore = Math.max(totalScore, 0.92);
   }
 
   // Construção da justificativa amigável

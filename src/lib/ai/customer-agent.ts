@@ -125,6 +125,39 @@ export function searchMatchingProducts(
       if (modelagem && modelagem.includes(token)) {
         score += 4;
       }
+      const gola = (product.attributes?.gola || '').toLowerCase();
+      if (gola && (gola.includes(token) || token.includes(gola))) {
+        score += 8;
+      }
+      const manga = (product.attributes?.manga || '').toLowerCase();
+      if (manga && (manga.includes(token) || token.includes(manga))) {
+        score += 8;
+      }
+      if (product.attributes?.detalhes?.some((d: string) => d.toLowerCase().includes(token))) {
+        score += 5;
+      }
+
+      // Varredura dinâmica para qualquer atributo de produto ou serviço (marca, procedimento, duracao, volumetria, etc.)
+      if (product.attributes) {
+        for (const [key, val] of Object.entries(product.attributes)) {
+          if (['cor_principal', 'modelagem', 'gola', 'manga', 'detalhes'].includes(key)) continue;
+          if (typeof val === 'string' && val.trim()) {
+            const valNorm = val.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            if (valNorm.includes(token) || token.includes(valNorm)) {
+              score += 6;
+            }
+          } else if (Array.isArray(val)) {
+            for (const item of val) {
+              if (typeof item === 'string' && item.trim()) {
+                const itemNorm = item.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                if (itemNorm.includes(token) || token.includes(itemNorm)) {
+                  score += 5;
+                }
+              }
+            }
+          }
+        }
+      }
     }
 
     // 3. Tamanho
@@ -219,7 +252,10 @@ export class CommercialSalesAgent {
     // 1. RECONHECIMENTO DE MÍDIA / STORY (Cache ou Auto-Cadastro)
     // =========================================================================
     if (storyMediaId || storyUrl) {
-      const mediaIdToLookup = storyMediaId || (storyUrl?.match(/\/p\/([^\/]+)/)?.[1]) || storyUrl;
+      const mediaIdToLookup = storyMediaId
+        || (storyUrl?.match(/asset_id=([^&]+)/)?.[1])   // Meta CDN: lookaside.fbsbx.com/?asset_id=xxx
+        || (storyUrl?.match(/\/p\/([^\/]+)/)?.[1])       // Instagram post permalink: /p/xxxx
+        || storyUrl;
       if (mediaIdToLookup) {
         const media = await intelligentCatalogService.getMediaByInstagramId(mediaIdToLookup);
         if (media) {
@@ -284,9 +320,10 @@ export class CommercialSalesAgent {
     if (!targetProduct && intentAnalysis.suggestedCommercialAction !== 'greet_warmly' && intentAnalysis.primaryIntent !== 'greeting') {
       allProducts = await intelligentCatalogService.listProducts(storeId, catalogSlug);
 
-      // Busca usando as entidades extraídas pelo Agente de Intenção
+      // Busca usando a mensagem real do cliente combinada com os atributos detectados pela IA
+      const combinedQuery = [cleanText, ...(intentAnalysis.entities.attributes || [])].join(' ');
       const searchResult = searchMatchingProducts(
-        intentAnalysis.entities.specificQuery || cleanText,
+        combinedQuery,
         allProducts,
         intentAnalysis.entities.size
       );
@@ -297,13 +334,13 @@ export class CommercialSalesAgent {
       } else if (searchResult.matches.length > 1) {
         const top1 = searchResult.scored[0];
         const top2 = searchResult.scored[1];
-        const lowerQuery = (intentAnalysis.entities.specificQuery || cleanText).toLowerCase();
+        const lowerQuery = (cleanText + ' ' + (intentAnalysis.entities.specificQuery || '')).toLowerCase();
         const titleExact = searchResult.matches.find((p) => lowerQuery.includes(p.title.toLowerCase()));
 
         if (titleExact) {
           targetProduct = titleExact;
           processingSource = 'hnsw_text_search';
-        } else if (top1 && top2 && top1.score >= top2.score + 6) {
+        } else if (top1 && top2 && top1.score >= top2.score + 4) {
           targetProduct = top1.product;
           processingSource = 'hnsw_text_search';
         } else {
@@ -386,6 +423,9 @@ export class CommercialSalesAgent {
         currency: 'BRL',
       });
 
+      const isTargetService = (targetProduct.attributes?.tipo_item === 'servico' || targetProduct.attributes?.tipo_item === 'serviço') ||
+        /\b(servico|serviço|servicos|serviços|barbearia|corte|cabelo|barba|unha|unhas|manicure|pedicure|estetica|estética|lash|cilios|cílios|sobrancelha|sobrancelhas|limpeza de pele|massagem|drenagem|depilacao|depilação|higienizacao|higienização|detailing|polimento|lavagem|aluguel|locacao|locação|procedimento|sessao|sessão|aplicacao|aplicação|agendamento|consultoria|treino|personal)\b/i.test(`${targetProduct.category || ''} ${targetProduct.title || ''}`);
+
       let replyText = '';
 
       // Decisão comercial baseada na intenção qualificada pelo Agente 1
@@ -394,18 +434,22 @@ export class CommercialSalesAgent {
         if (stockInfo.specificVariant?.available) {
           const priceSnippet = targetProduct.price_cents > 0 ? ` (${priceFormatted})` : '';
           replyText = productDirectLink
-            ? `${customerSalutation} Sim, temos o tamanho ${sizeMentioned} do(a) ${targetProduct.title} no estoque${priceSnippet}! ✨\n\nVeja todos os detalhes e garanta a sua escolha aqui:\n${productDirectLink}`
-            : `${customerSalutation} Sim, temos o tamanho ${sizeMentioned} do(a) ${targetProduct.title} no estoque${priceSnippet}! ✨\n\nDeseja que eu reserve uma unidade para você? Me confirma seu endereço por aqui!`;
+            ? (isTargetService
+                ? `${customerSalutation} Sim, temos a opção ${sizeMentioned} do serviço ${targetProduct.title} disponível para agendamento${priceSnippet}! ✨\n\nVeja todos os detalhes e escolha seu horário aqui:\n${productDirectLink}`
+                : `${customerSalutation} Sim, temos o tamanho ${sizeMentioned} do(a) ${targetProduct.title} no estoque${priceSnippet}! ✨\n\nVeja todos os detalhes e garanta a sua escolha aqui:\n${productDirectLink}`)
+            : (isTargetService
+                ? `${customerSalutation} Sim, temos a opção ${sizeMentioned} do serviço ${targetProduct.title} disponível para agendamento${priceSnippet}! ✨\n\nDeseja agendar um horário? Me conta qual dia e período (manhã/tarde) fica melhor para você!`
+                : `${customerSalutation} Sim, temos o tamanho ${sizeMentioned} do(a) ${targetProduct.title} no estoque${priceSnippet}! ✨\n\nDeseja que eu reserve uma unidade para você? Me confirma seu endereço por aqui!`);
         } else {
           replyText = productDirectLink
             ? `${customerSalutation} ${stockInfo.humanFriendlyMessage}\n\nConfira as opções disponíveis em nosso catálogo:\n${productDirectLink}`
-            : `${customerSalutation} ${stockInfo.humanFriendlyMessage}\n\nSe quiser ver outros modelos disponíveis ou encomendar, me avisa por aqui!`;
+            : `${customerSalutation} ${stockInfo.humanFriendlyMessage}\n\nSe quiser ver outras opções disponíveis ou encomendar, me avisa por aqui!`;
         }
       } else if (intentAnalysis.primaryIntent === 'price_inquiry') {
         if (targetProduct.price_cents > 0) {
           replyText = productDirectLink
-            ? `${customerSalutation} O(a) **${targetProduct.title}** está disponível por ${priceFormatted}! 😊\n${stockInfo.humanFriendlyMessage}\n\nPara ver detalhes completos e opções:\n${productDirectLink}`
-            : `${customerSalutation} O(a) **${targetProduct.title}** está disponível por ${priceFormatted}! 😊\n${stockInfo.humanFriendlyMessage}\n\nSe quiser garantir o seu, pode me chamar aqui no direct! ✨`;
+            ? `${customerSalutation} ${isTargetService ? 'O serviço' : 'O(a)'} **${targetProduct.title}** está disponível por ${priceFormatted}! 😊\n${stockInfo.humanFriendlyMessage}\n\nPara ver detalhes completos e opções:\n${productDirectLink}`
+            : `${customerSalutation} ${isTargetService ? 'O serviço' : 'O(a)'} **${targetProduct.title}** está disponível por ${priceFormatted}! 😊\n${stockInfo.humanFriendlyMessage}\n\n${isTargetService ? 'Se quiser agendar um horário, pode me chamar aqui no direct! ✨' : 'Se quiser garantir o seu, pode me chamar aqui no direct! ✨'}`;
         } else {
           await intelligentCatalogService.createPriceConfirmationRequest({
             storeId,
@@ -425,8 +469,12 @@ export class CommercialSalesAgent {
       ) {
         if (targetProduct.price_cents > 0) {
           replyText = productDirectLink
-            ? `Que ótimo gosto, ${isGenericUser ? 'amamos sua escolha' : cleanUsername}! 💖 O(a) **${targetProduct.title}** está disponível (${priceFormatted}).\n\nFinalize seu pedido diretamente por aqui com atendimento ágil:\n${productDirectLink}`
-            : `Que ótimo gosto, ${isGenericUser ? 'amamos sua escolha' : cleanUsername}! 💖 O(a) **${targetProduct.title}** está disponível (${priceFormatted}).\n\nDeseja que eu reserve uma unidade para você? Basta me confirmar seu tamanho e endereço por aqui! ✨`;
+            ? (isTargetService
+                ? `Que ótimo gosto, ${isGenericUser ? 'amamos sua escolha' : cleanUsername}! ✨ O serviço **${targetProduct.title}** está disponível para agendamento (${priceFormatted}).\n\nConfirme seu agendamento diretamente por aqui com atendimento ágil:\n${productDirectLink}`
+                : `Que ótimo gosto, ${isGenericUser ? 'amamos sua escolha' : cleanUsername}! 💖 O(a) **${targetProduct.title}** está disponível (${priceFormatted}).\n\nFinalize seu pedido diretamente por aqui com atendimento ágil:\n${productDirectLink}`)
+            : (isTargetService
+                ? `Que ótimo gosto, ${isGenericUser ? 'amamos sua escolha' : cleanUsername}! ✨ O serviço **${targetProduct.title}** está disponível para agendamento (${priceFormatted}).\n\nDeseja agendar um horário? Basta me confirmar o melhor dia e período (manhã/tarde) por aqui! 📅`
+                : `Que ótimo gosto, ${isGenericUser ? 'amamos sua escolha' : cleanUsername}! 💖 O(a) **${targetProduct.title}** está disponível (${priceFormatted}).\n\nDeseja que eu reserve uma unidade para você? Basta me confirmar seu tamanho e endereço por aqui! ✨`);
         } else {
           await intelligentCatalogService.createPriceConfirmationRequest({
             storeId,
@@ -442,8 +490,8 @@ export class CommercialSalesAgent {
         }
       } else {
         replyText = productDirectLink
-          ? `${customerSalutation} Sobre o(a) **${targetProduct.title}** 😊\n${stockInfo.humanFriendlyMessage}\n\nConfira fotos, detalhes e disponibilidade em tempo real:\n${productDirectLink}`
-          : `${customerSalutation} Sobre o(a) **${targetProduct.title}** 😊\n${stockInfo.humanFriendlyMessage}\n\nSe quiser garantir o seu ou tirar dúvidas, estou à disposição aqui no chat!`;
+          ? `${customerSalutation} Sobre ${isTargetService ? 'o serviço' : 'o(a)'} **${targetProduct.title}** 😊\n${stockInfo.humanFriendlyMessage}\n\nConfira fotos, detalhes e disponibilidade em tempo real:\n${productDirectLink}`
+          : `${customerSalutation} Sobre ${isTargetService ? 'o serviço' : 'o(a)'} **${targetProduct.title}** 😊\n${stockInfo.humanFriendlyMessage}\n\n${isTargetService ? 'Se quiser agendar seu horário ou tirar dúvidas do procedimento, estou à disposição aqui no chat!' : 'Se quiser garantir o seu ou tirar dúvidas, estou à disposição aqui no chat!'}`;
       }
 
       return {
@@ -472,13 +520,13 @@ export class CommercialSalesAgent {
       let greetingReply = '';
       if (convContext?.current_product) {
         greetingReply = `${nameSalutation}! Tudo bem? Vi que você estava de olho no(a) ${convContext.current_product.title}! ✨\n\nComo posso te ajudar com ele(a)? Deseja tirar alguma dúvida de tamanho, frete ou prefere o link para garantir o seu?`;
-      } else if (greetingAlreadySent) {
-        greetingReply = canShareCatalog && generalCatalogLink
-          ? `${nameSalutation}! Estou por aqui para te atender com o maior prazer. ✨\n\nMe conta: o que você gostaria de ver hoje? Pode me mandar o que procura ou dar uma olhada em todas as novidades na nossa vitrine:\n${generalCatalogLink}`
-          : `${nameSalutation}! Estou por aqui para te atender com o maior prazer. ✨\n\nMe conta: o que você gostaria de ver hoje? Pode me mandar o modelo que procura ou o print de algo que viu nos nossos posts/stories que eu já vejo a disponibilidade pra você!`;
       } else if (lowerClean.includes('como funciona') || lowerClean.includes('como é') || lowerClean.includes('como e')) {
         const handleDisplay = storeHandle ? ` (@${storeHandle.replace(/^@+/, '')})` : '';
         greetingReply = `${nameSalutation}! Tudo bem? Sou o assistente virtual da *${storeName}*${handleDisplay}! ✨\n\nNosso atendimento por aqui é super prático e humanizado: você pode me contar qual produto, serviço ou informação procura, ou me mandar o print de algo que viu nos nossos posts/stories que eu verifico opções, valores e disponibilidade pra você na hora!\n\nComo posso te ajudar hoje?`;
+      } else if (greetingAlreadySent) {
+        greetingReply = canShareCatalog && generalCatalogLink
+          ? `${nameSalutation}! Estou por aqui para te atender com o maior prazer. ✨\n\nMe conta: o que você gostaria de ver hoje? Pode me mandar o produto ou serviço que procura ou dar uma olhada em todas as opções na nossa vitrine:\n${generalCatalogLink}`
+          : `${nameSalutation}! Estou por aqui para te atender com o maior prazer. ✨\n\nMe conta: o que você gostaria de ver hoje? Pode me mandar o produto, serviço ou o print de algo que viu nos nossos posts/stories que eu já vejo a disponibilidade pra você!`;
       } else {
         const handleDisplay = storeHandle ? ` (@${storeHandle.replace(/^@+/, '')})` : '';
         greetingReply = `${nameSalutation}! Tudo bem? Sou o assistente virtual da *${storeName}*${handleDisplay}! ✨\n\nComo posso te ajudar hoje? Você procura algum produto ou serviço específico, ou gostaria de mais informações?`;
@@ -543,11 +591,43 @@ export class CommercialSalesAgent {
       };
     }
 
-    // C) Consulta de Produtos: Vários encontrados ou Item Específico Fora de Estoque
+    // C) Dúvida sobre Agendamento / Serviços
+    if (intentAnalysis.primaryIntent === 'service_inquiry') {
+      const serviceReply = canShareCatalog && generalCatalogLink
+        ? `${nameSalutation}! Atendemos com horários e procedimentos agendados na ${storeName}! ✨\n\nVocê pode conferir nossos serviços e agendamentos na nossa vitrine digital:\n${generalCatalogLink}\n\nQual serviço você gostaria de realizar? Me conta o melhor dia ou horário para eu verificar a disponibilidade na agenda para você!`
+        : `${nameSalutation}! Atendemos com horários e procedimentos agendados na ${storeName}! ✨\n\nQual serviço você gostaria de realizar? Me conta o melhor dia ou horário para eu verificar a disponibilidade na agenda para você!`;
+
+      await intelligentCatalogService.updateConversationContext(
+        storeId,
+        buyerId,
+        undefined,
+        storyMediaId,
+        cleanUsername,
+        {
+          greeting_sent: true,
+          turn_count: currentTurn,
+          last_intent: 'service_inquiry',
+        }
+      );
+
+      return {
+        shouldReply: true,
+        intent: 'service_inquiry',
+        replyText: serviceReply,
+        productDirectLink: generalCatalogLink,
+        stockStatus: 'unknown',
+        processingSource: 'generic',
+        cachedAvoidedAiExecution: false,
+        intentAnalysis,
+      };
+    }
+
+    // D) Consulta de Produtos: Vários encontrados ou Item Específico Fora de Estoque
     const isSpecificCategory = Boolean(intentAnalysis.entities.category);
 
     if (
       intentAnalysis.suggestedCommercialAction !== 'ask_qualifying_question' &&
+      intentAnalysis.primaryIntent !== 'service_inquiry' &&
       (
         intentAnalysis.suggestedCommercialAction === 'recommend_products' ||
         intentAnalysis.primaryIntent === 'product_inquiry' ||
@@ -681,34 +761,6 @@ export class CommercialSalesAgent {
       };
     }
 
-    // E) Dúvida sobre Agendamento / Serviços
-    if (intentAnalysis.primaryIntent === 'service_inquiry') {
-      const serviceReply = `${nameSalutation}! Atendemos com horários e procedimentos agendados na ${storeName}! ✨\n\nQual serviço você gostaria de realizar? Me conta o melhor dia ou horário para eu verificar a disponibilidade na agenda para você!`;
-
-      await intelligentCatalogService.updateConversationContext(
-        storeId,
-        buyerId,
-        undefined,
-        storyMediaId,
-        cleanUsername,
-        {
-          greeting_sent: true,
-          turn_count: currentTurn,
-          last_intent: 'service_inquiry',
-        }
-      );
-
-      return {
-        shouldReply: true,
-        intent: 'service_inquiry',
-        replyText: serviceReply,
-        productDirectLink: generalCatalogLink,
-        stockStatus: 'unknown',
-        processingSource: 'generic',
-        cachedAvoidedAiExecution: false,
-        intentAnalysis,
-      };
-    }
 
     // F) Dúvida sobre Frete / Envio / Prazos
     if (intentAnalysis.primaryIntent === 'shipping_inquiry') {

@@ -25,8 +25,8 @@ export class CatalogLinkAgent implements ISpecializedAgent {
     // Se o catálogo NÃO existe ou não foi aprovado para ser divulgado: NÃO ENVIA LINK VAZIO
     if (!canShareCatalog) {
       const replyText = isFirstContact
-        ? `${initialGreeting} Sou o assistente virtual da *${storeName}*${handleDisplay}! ✨\n\nNo momento, estamos atualizando nossa vitrine com novos lançamentos. Mas me conta ou me manda o print de qual modelo ou look você viu nos nossos posts ou stories, que eu já vejo a disponibilidade e valores para você agora mesmo! 🛍️`
-        : `No momento estamos atualizando nossa vitrine com novos lançamentos! Mas se você viu algum modelo ou look nos nossos posts ou stories, me conta aqui ou me manda o print que eu já vejo a disponibilidade para você agora mesmo! 🛍️`;
+        ? `${initialGreeting} Sou o assistente virtual da *${storeName}*${handleDisplay}! ✨\n\nNo momento, estamos atualizando nossa vitrine com novos lançamentos. Mas me conta ou me manda o print de qual produto, serviço ou modelo você viu nos nossos posts ou stories, que eu já vejo a disponibilidade e valores para você agora mesmo! ✨`
+        : `No momento estamos atualizando nossa vitrine com novos lançamentos! Mas se você viu algum produto, serviço ou modelo nos nossos posts ou stories, me conta aqui ou me manda o print que eu já vejo a disponibilidade para você agora mesmo! ✨`;
       return {
         agentType: this.type,
         agentName: this.name,
@@ -37,11 +37,11 @@ export class CatalogLinkAgent implements ISpecializedAgent {
     }
     
     // Identifica se há categorias/tópicos em destaque
-    const topics = catalog.topics && catalog.topics.length > 0 ? ` Temos coleções completas de ${catalog.topics.slice(0, 3).join(', ')} e muito mais!` : '';
+    const topics = catalog.topics && catalog.topics.length > 0 ? ` Temos opções completas de ${catalog.topics.slice(0, 3).join(', ')} e muito mais!` : '';
 
     const replyText = isFirstContact
-      ? `${initialGreeting} Sou o assistente virtual da *${storeName}*${handleDisplay}! ✨ Que maravilha ter você por aqui!${topics}\n\nVocê pode conferir todas as nossas peças disponíveis, fotos e valores no nosso catálogo oficial:\n👉 ${catalogUrl}\n\nQualquer dúvida sobre algum look ou tamanho, é só me chamar aqui! 🛍️`
-      : `Você pode conferir todas as nossas peças disponíveis, fotos e valores no nosso catálogo oficial:\n👉 ${catalogUrl}\n\nQualquer dúvida sobre algum look ou tamanho, é só me chamar aqui! 🛍️`;
+      ? `${initialGreeting} Sou o assistente virtual da *${storeName}*${handleDisplay}! ✨ Que maravilha ter você por aqui!${topics}\n\nVocê pode conferir todas as nossas opções disponíveis, fotos e valores no nosso catálogo oficial:\n👉 ${catalogUrl}\n\nQualquer dúvida sobre produtos, serviços ou opções, é só me chamar aqui! ✨`
+      : `Você pode conferir todas as nossas opções disponíveis, fotos e valores no nosso catálogo oficial:\n👉 ${catalogUrl}\n\nQualquer dúvida sobre produtos, serviços ou opções, é só me chamar aqui! ✨`;
 
     return {
       agentType: this.type,

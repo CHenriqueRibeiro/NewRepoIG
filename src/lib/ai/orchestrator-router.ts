@@ -44,8 +44,8 @@ export const AGENT_SEMANTIC_PROTOTYPES: Record<
   },
   catalog_link: {
     title: 'Catálogo & Vitrine Virtual',
-    description: 'Acesso à vitrine online, link do catálogo de produtos, site da loja para ver todas as peças e novidades',
-    semanticContext: 'catalogo vitrine virtual link site loja online ver todas as pecas produtos modelos novidades colecao completa olhar as roupas navegar na loja ver fotos',
+    description: 'Acesso à vitrine online, link do catálogo de produtos e serviços, site da loja para ver todas as opções e novidades',
+    semanticContext: 'catalogo vitrine virtual link site loja online ver todas as opcoes produtos servicos modelos novidades colecao completa olhar as novidades navegar na loja ver fotos',
   },
   human_handoff: {
     title: 'Atendente Humano & Suporte',
@@ -53,9 +53,9 @@ export const AGENT_SEMANTIC_PROTOTYPES: Record<
     semanticContext: 'atendente humano falar com alguem atendente real pessoa fisica suporte equipe ajuda especializada reclamacao insatisfacao problema no pedido procon falar com atendente',
   },
   product_identification: {
-    title: 'Identificação de Produto & Estoque',
-    description: 'Consulta sobre peça específica de roupa, calçado ou acessório, tamanhos, cores, caimento, valor e estoque disponível',
-    semanticContext: 'produto peca roupa vestido blusa saia calca tamanho cor modelo caimento tecido quanto custa valor preco tem disponivel pronta entrega estoque reserve para mim foto story',
+    title: 'Identificação de Produto, Serviço & Estoque',
+    description: 'Consulta sobre produto ou serviço específico, opções, tamanhos, cores, procedimento, agendamento, valor e disponibilidade',
+    semanticContext: 'produto servico peca item corte barba unha manicure procedimento vestido blusa calca celular relogio tamanho cor modelo especificacao quanto custa valor preco tem disponivel pronta entrega agendamento horario estoque reserve para mim foto story',
   },
   faq_general: {
     title: 'FAQ, Frete & Saudações Gerais',
@@ -240,9 +240,9 @@ export class JevAgentOrchestrator {
                 instructions: 'Qual agente especializado deve atender esta mensagem do cliente da loja?',
                 criteria: {
                   product_identification:
-                    'Cliente perguntando sobre uma peça de roupa, modelo, produto específico (ex: vestido, blusa, calça), disponibilidade em estoque, tamanho, cor ou valor de uma peça.',
+                    'Cliente perguntando sobre um produto ou serviço específico (ex: corte, manicure, estética, eletrônico, vestido, perfume), disponibilidade, agendamento, tamanho, cor, opções ou valor de um item.',
                   catalog_link:
-                    'Cliente pedindo link da loja, catálogo virtual, site ou querendo ver todas as peças disponíveis.',
+                    'Cliente pedindo link da loja, catálogo virtual, site ou querendo ver todas as opções, produtos e serviços disponíveis.',
                   store_address:
                     'Cliente perguntando onde fica a loja física, endereço, ponto de retirada no local, como chegar ou horário de funcionamento.',
                   checkout_pix:

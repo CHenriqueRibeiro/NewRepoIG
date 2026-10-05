@@ -29,7 +29,7 @@ export class FaqAgent implements ISpecializedAgent {
           agentType: this.type,
           agentName: this.name,
           shouldReply: true,
-          replyText: `Temos opções e novidades com valores super especiais! ✨\n\nVocê pode conferir as peças disponíveis direto na nossa vitrine:\n👉 ${catalogUrl}\n\nSe você procura alguma peça em especial (como vestidos, blusas ou conjuntos), me conta aqui que eu te ajudo! 💖`,
+          replyText: `Temos opções e novidades com valores super especiais! ✨\n\nVocê pode conferir todas as opções disponíveis direto na nossa vitrine:\n👉 ${catalogUrl}\n\nSe você procura algum produto ou serviço em especial, me conta aqui que eu te ajudo! 💖`,
           confidence: 0.95,
           metadata: { catalogUrl },
         };
@@ -38,7 +38,7 @@ export class FaqAgent implements ISpecializedAgent {
         agentType: this.type,
         agentName: this.name,
         shouldReply: true,
-        replyText: `Temos novidades e peças com valores super especiais! ✨ Qual tipo de peça você procura (vestidos, blusas, conjuntos)? Me conta aqui que te mostro as opções disponíveis! 💖`,
+        replyText: `Temos novidades e opções com valores super especiais! ✨ Qual tipo de produto ou serviço você procura? Me conta aqui que te mostro as opções disponíveis! 💖`,
         confidence: 0.95,
       };
     }
@@ -51,9 +51,9 @@ export class FaqAgent implements ISpecializedAgent {
 
       let replyText = '';
       if (cepMatch) {
-        replyText = `${greeting}Enviamos sim para o seu CEP (${cepMatch[0]})! 📦✨ Trabalhamos com envio seguro para todo o Brasil via Correios e transportadora, além de retirada no local. Me conta qual look ou peça você tem interesse para eu calcular o prazo e valor certinho para o seu endereço!`;
+        replyText = `${greeting}Enviamos sim para o seu CEP (${cepMatch[0]})! 📦✨ Trabalhamos com envio seguro para todo o Brasil via Correios e transportadora, além de retirada no local. Me conta qual produto ou item você tem interesse para eu calcular o prazo e valor certinho para o seu endereço!`;
       } else {
-        replyText = `${greeting}Enviamos sim para todo o Brasil! 📦✨ Trabalhamos com envio seguro via Correios, transportadora e também temos opção de retirada no local. Me passa o seu CEP e qual look você gostou que eu já calculo o prazo e valor certinho para você!`;
+        replyText = `${greeting}Enviamos sim para todo o Brasil! 📦✨ Trabalhamos com envio seguro via Correios, transportadora e também temos opção de retirada no local. Me passa o seu CEP e qual item você gostou que eu já calculo o prazo e valor certinho para você!`;
       }
 
       return {
@@ -72,7 +72,7 @@ export class FaqAgent implements ISpecializedAgent {
         agentType: this.type,
         agentName: this.name,
         shouldReply: true,
-        replyText: `Trabalhamos com condições especiais para pedidos em maior quantidade! ✨ Me conta quais peças e quantidades você tem em mente que eu te passo as opções!`,
+        replyText: `Trabalhamos com condições especiais para pedidos em maior quantidade! ✨ Me conta quais produtos ou serviços e quantidades você tem em mente que eu te passo as opções!`,
         confidence: 0.95,
       };
     }
@@ -83,9 +83,9 @@ export class FaqAgent implements ISpecializedAgent {
       const handleDisplay = ctx.storeHandle ? ` (@${ctx.storeHandle.replace(/^@+/, '')})` : '';
       let reply = `${greeting} Tudo bem por aí? Sou o assistente virtual da *${storeName}*${handleDisplay}! ✨ É um prazer atender você!\n\nNós trabalhamos com envio para todo o Brasil e retirada no local.`;
       if (canShareCatalog && catalogUrl) {
-        reply += ` Você pode ver todas as nossas peças disponíveis com fotos, tamanhos e valores na nossa vitrine:\n👉 ${catalogUrl}\n\nSe tiver qualquer dúvida ou quiser ajuda para escolher seu look, estou à disposição!`;
+        reply += ` Você pode ver todas as nossas opções disponíveis com fotos, detalhes e valores na nossa vitrine:\n👉 ${catalogUrl}\n\nSe tiver qualquer dúvida ou quiser ajuda para escolher seu produto ou serviço, estou à disposição!`;
       } else {
-        reply += ` Se você procura algum modelo ou quiser tirar dúvidas de tamanhos e modelos, pode me contar aqui que eu te ajudo com o maior carinho! 💖`;
+        reply += ` Se você procura algum produto, serviço ou quiser tirar dúvidas de opções e horários, pode me contar aqui que eu te ajudo com o maior carinho! 💖`;
       }
       return {
         agentType: this.type,
@@ -104,7 +104,7 @@ export class FaqAgent implements ISpecializedAgent {
         agentType: this.type,
         agentName: this.name,
         shouldReply: true,
-        replyText: `Oi de novo! ✨ Aqui é da equipe da *${storeName}*. Como posso te ajudar agora? Procura alguma peça ou gostaria de tirar alguma dúvida?`,
+        replyText: `Oi de novo! ✨ Aqui é da equipe da *${storeName}*. Como posso te ajudar agora? Procura algum produto, serviço ou gostaria de tirar alguma dúvida?`,
         confidence: 0.95,
       };
     }
@@ -114,7 +114,7 @@ export class FaqAgent implements ISpecializedAgent {
       agentType: this.type,
       agentName: this.name,
       shouldReply: true,
-      replyText: `Com certeza! Me conta melhor o que você procura ou se viu alguma peça nos nossos posts e stories, que eu já te passo todos os detalhes de tamanhos e valores com o maior carinho! 💖`,
+      replyText: `Com certeza! Me conta melhor o que você procura ou se viu algum produto ou serviço nos nossos posts e stories, que eu já te passo todos os detalhes, valores e disponibilidade com o maior carinho! 💖`,
       confidence: 0.9,
     };
   }

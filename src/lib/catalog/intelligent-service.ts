@@ -206,9 +206,8 @@ export class IntelligentCatalogService {
       }
     }
 
-    if (!global.__intelligentProductsStore || global.__intelligentProductsStore.length === 0) {
-      this.seedDemoFixtures();
-    }
+    // NUNCA fazer seed automático de produtos mock em produção.
+    // seedDemoFixtures() só é chamado explicitamente pela rota /api/catalog/intelligent?seed=true (testes/seed manual).
 
     const memoryProducts = [...(global.__intelligentProductsStore || [])];
 
@@ -320,24 +319,75 @@ export class IntelligentCatalogService {
     }
 
     // Geração de mensagem rigorosa e precisa
+    const isService = (product.attributes?.tipo_item === 'servico' || product.attributes?.tipo_item === 'serviço') ||
+      /\b(servico|serviço|servicos|serviços|barbearia|corte|cabelo|barba|unha|unhas|manicure|pedicure|estetica|estética|lash|cilios|cílios|sobrancelha|sobrancelhas|limpeza de pele|massagem|drenagem|depilacao|depilação|higienizacao|higienização|detailing|polimento|lavagem|aluguel|locacao|locação|procedimento|sessao|sessão|aplicacao|aplicação|agendamento|consultoria|treino|personal)\b/i.test(`${product.category || ''} ${product.title || ''}`);
+
+    const isFashion = !isService && (
+      /\b(roupa|roupas|vestido|vestidos|blusa|blusas|calca|calcas|saia|saias|cropped|short|shorts|camisa|camisas|lingerie|biquini|biquinis|jaqueta|jaquetas|moletom|moletons|macacao|macacoes|look|looks|moda|calcado|calcados|tenis|sapato|sapatos|sandalia|sandalias|bota|botas|salto|rasteirinha)\b/i.test(`${product.category || ''} ${product.title || ''}`) ||
+      Boolean(product.attributes?.gola || product.attributes?.manga)
+    );
+
     let humanFriendlyMessage = '';
-    if (specificVariant) {
-      if (specificVariant.available) {
-        humanFriendlyMessage = `Sim! Temos o tamanho ${specificVariant.name} da ${product.title} disponível (${specificVariant.stock} unidades).`;
+    if (isService) {
+      if (specificVariant) {
+        if (specificVariant.available) {
+          humanFriendlyMessage = `Sim! Temos a opção ${specificVariant.name} do serviço ${product.title} disponível para agendamento.`;
+        } else {
+          const otherAvailable = variants.filter((v) => v.available).map((v) => v.name);
+          humanFriendlyMessage = `No momento, a opção ${specificVariant.name} do serviço ${product.title} está indisponível na agenda.${
+            otherAvailable.length > 0 ? ` Temos opções: ${otherAvailable.join(', ')}.` : ''
+          }`;
+        }
       } else {
-        const otherAvailable = variants.filter((v) => v.available).map((v) => `${v.name} (${v.stock})`);
-        humanFriendlyMessage = `No momento, a ${product.title} está indisponível no tamanho ${specificVariant.name}.${
-          otherAvailable.length > 0 ? ` Temos nos tamanhos: ${otherAvailable.join(', ')}.` : ' Não restam outras unidades.'
-        }`;
+        if (totalStock > 0) {
+          const availList = variants.filter((v) => v.available).map((v) => v.name);
+          humanFriendlyMessage = `O serviço "${product.title}" está disponível para agendamento!${
+            availList.length > 0 ? ` Opções: ${availList.join(', ')}.` : ''
+          } Valor: R$ ${(product.price_cents / 100).toFixed(2).replace('.', ',')}.`;
+        } else {
+          humanFriendlyMessage = `O serviço "${product.title}" está com a agenda temporariamente fechada.`;
+        }
+      }
+    } else if (isFashion) {
+      if (specificVariant) {
+        if (specificVariant.available) {
+          humanFriendlyMessage = `Sim! Temos o tamanho ${specificVariant.name} da ${product.title} disponível (${specificVariant.stock} unidades).`;
+        } else {
+          const otherAvailable = variants.filter((v) => v.available).map((v) => `${v.name} (${v.stock})`);
+          humanFriendlyMessage = `No momento, a ${product.title} está indisponível no tamanho ${specificVariant.name}.${
+            otherAvailable.length > 0 ? ` Temos nos tamanhos: ${otherAvailable.join(', ')}.` : ' Não restam outras unidades.'
+          }`;
+        }
+      } else {
+        if (totalStock > 0) {
+          const availList = variants.filter((v) => v.available).map((v) => v.name);
+          humanFriendlyMessage = `A ${product.title} está disponível! Tamanhos: ${
+            availList.length > 0 ? availList.join(', ') : 'Tamanho Único'
+          }. Valor: R$ ${(product.price_cents / 100).toFixed(2).replace('.', ',')}.`;
+        } else {
+          humanFriendlyMessage = `A ${product.title} esgotou no momento.`;
+        }
       }
     } else {
-      if (totalStock > 0) {
-        const availList = variants.filter((v) => v.available).map((v) => v.name);
-        humanFriendlyMessage = `A ${product.title} está disponível! Tamanhos: ${
-          availList.length > 0 ? availList.join(', ') : 'Tamanho Único'
-        }. Valor: R$ ${(product.price_cents / 100).toFixed(2).replace('.', ',')}.`;
+      // Produtos físicos gerais (eletrônicos, cosméticos, perfumaria, doces, jóias, móveis)
+      if (specificVariant) {
+        if (specificVariant.available) {
+          humanFriendlyMessage = `Sim! Temos a opção ${specificVariant.name} de ${product.title} disponível em estoque (${specificVariant.stock} unidades).`;
+        } else {
+          const otherAvailable = variants.filter((v) => v.available).map((v) => `${v.name} (${v.stock})`);
+          humanFriendlyMessage = `No momento, o(a) ${product.title} está indisponível na opção ${specificVariant.name}.${
+            otherAvailable.length > 0 ? ` Temos nas opções: ${otherAvailable.join(', ')}.` : ' Não restam outras unidades.'
+          }`;
+        }
       } else {
-        humanFriendlyMessage = `A ${product.title} esgotou no momento.`;
+        if (totalStock > 0) {
+          const availList = variants.filter((v) => v.available).map((v) => v.name);
+          humanFriendlyMessage = `O(a) ${product.title} está disponível em estoque!${
+            availList.length > 0 ? ` Opções: ${availList.join(', ')}.` : ''
+          } Valor: R$ ${(product.price_cents / 100).toFixed(2).replace('.', ',')}.`;
+        } else {
+          humanFriendlyMessage = `O(a) ${product.title} esgotou no momento.`;
+        }
       }
     }
 

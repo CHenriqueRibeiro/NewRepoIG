@@ -164,21 +164,29 @@ export class ProductIdentificationAgent implements ISpecializedAgent {
         })
       : undefined;
 
+    const isService = /\b(servico|serviço|servicos|serviços|barbearia|corte|cabelo|barba|unha|unhas|manicure|pedicure|estetica|estética|lash|cilios|cílios|sobrancelha|sobrancelhas|limpeza de pele|massagem|drenagem|depilacao|depilação|detailing|polimento|lavagem|aluguel|agendamento|procedimento)\b/i.test(`${bestMatch.category || ''} ${bestMatch.name || ''}`);
+
     const isAvailable = bestMatch.stock > 0 || bestMatch.isInfiniteStock;
     const priceFormatted = `R$ ${bestMatch.price.toFixed(2)}`;
-    const stockNotice = isAvailable ? '✨ *Em estoque pronto para envio!*' : '⚠️ *Últimas unidades ou sob consulta.*';
+    const stockNotice = isService
+      ? (isAvailable ? '✨ *Disponível para agendamento!*' : '⚠️ *Horários sob consulta.*')
+      : (isAvailable ? '✨ *Em estoque pronto para envio!*' : '⚠️ *Últimas unidades ou sob consulta.*');
 
     let sizeDetails = '';
     if (bestMatch.sizes && bestMatch.sizes.length > 0) {
-      sizeDetails += `\n📏 *Tamanhos:* ${bestMatch.sizes.join(', ')}`;
+      sizeDetails += `\n📏 *${isService ? 'Opções/Modalidades' : 'Tamanhos'}:* ${bestMatch.sizes.join(', ')}`;
     }
     if (bestMatch.colors && bestMatch.colors.length > 0) {
-      sizeDetails += `\n🎨 *Cores:* ${bestMatch.colors.join(', ')}`;
+      sizeDetails += `\n🎨 *${isService ? 'Variações' : 'Cores'}:* ${bestMatch.colors.join(', ')}`;
     }
 
-    const linkSection = productLink
-      ? `\n\nVocê pode conferir todas as fotos e garantir o seu diretamente por este link exclusivo:\n👉 ${productLink}\n\nDeseja que eu reserve uma unidade para você? 🛍️`
-      : `\n\nDeseja que eu reserve uma unidade para você? Basta me confirmar seu tamanho e endereço por aqui! 🛍️`;
+    const linkSection = isService
+      ? (productLink
+          ? `\n\nVocê pode conferir todos os detalhes e escolher seu horário diretamente por este link:\n👉 ${productLink}\n\nDeseja que eu reserve um horário para você? ✨`
+          : `\n\nDeseja agendar um horário? Basta me confirmar o melhor dia e período por aqui! 📅`)
+      : (productLink
+          ? `\n\nVocê pode conferir todas as fotos e garantir o seu diretamente por este link exclusivo:\n👉 ${productLink}\n\nDeseja que eu reserve uma unidade para você? 🛍️`
+          : `\n\nDeseja que eu reserve uma unidade para você? Basta me confirmar seu tamanho e endereço por aqui! 🛍️`);
 
     const replyText = isFirstContact
       ? `${initialGreeting} Sou o assistente virtual da *${storeName}*${handleDisplay}! Temos sim o *${bestMatch.name}*! ${stockNotice}\n\n💰 *Valor:* ${priceFormatted}${sizeDetails}${linkSection}`
