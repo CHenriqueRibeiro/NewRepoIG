@@ -9,7 +9,7 @@ import {
   PriceConfirmationRequest,
 } from './intelligent-types.ts';
 import { getServerCatalog, saveServerCatalog } from './storage.ts';
-import { supabase, isSupabaseConfigured } from '../supabase/client.ts';
+import { getServerSupabase, isSupabaseConfigured } from '../supabase/client.ts';
 import { cosineSimilarity, formatForPgVector, generateDeterministicEmbedding } from '../ai/embedding-service.ts';
 
 // Armazenamento em memória para desenvolvimento local / modo sandbox
@@ -178,9 +178,9 @@ export class IntelligentCatalogService {
    * 1. Lista todos os produtos cadastrados com variantes e memória visual
    */
   async listProducts(storeId?: string, catalogSlug?: string): Promise<ProductEntity[]> {
-    if (isSupabaseConfigured) {
+    if (isSupabaseConfigured && process.env.NODE_ENV !== 'test') {
       try {
-        let query = supabase.from('products').select(`
+        let query = getServerSupabase().from('products').select(`
           *,
           variants:product_variants(*),
           images:product_images(*)

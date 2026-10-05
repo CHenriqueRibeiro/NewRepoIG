@@ -5,6 +5,7 @@ import {
   setActiveInstagramSession,
   getAppBaseUrl,
 } from '@/lib/instagram/auth';
+import { ensureStoreInSupabase } from '@/lib/supabase/client';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -37,6 +38,13 @@ export async function GET(request: NextRequest) {
     }
 
     setActiveInstagramSession(validation.account, accessToken);
+
+    // Salva ou atualiza a loja na tabela public.stores do Supabase
+    try {
+      await ensureStoreInSupabase(validation.account);
+    } catch (storeErr) {
+      console.warn('[Supabase Store Sync Warn]:', storeErr);
+    }
 
     // Auto-assina a conta para receber webhooks de comentários e mensagens
     try {

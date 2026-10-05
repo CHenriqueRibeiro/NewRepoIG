@@ -7,7 +7,7 @@ import { classifySalesIntent } from '@/lib/ai/sales-intent-filter';
 import { jevAgentOrchestrator } from '@/lib/ai/orchestrator-router';
 import { instagramClient } from '@/lib/instagram/client';
 import { dispatchTask } from '@/lib/qstash/client';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
+import { getServerSupabase, isSupabaseConfigured, ensureStoreInSupabase } from '@/lib/supabase/client';
 import { getActiveInstagramSession, getValidAccessToken } from '@/lib/instagram/auth';
 import { decryptAES256GCM } from '@/lib/crypto/encryption';
 import { getServerCatalog, resolveActiveStoreIdentity, isCatalogPublishable } from '@/lib/catalog/storage';
@@ -94,19 +94,33 @@ async function handleCommentChange(value: any) {
   }
 
   // 1. Módulo Zero: Registrar interação para Auditoria de Vácuo & Telemetria
-  const interactionData = {
-    buyer_username: fromHandle,
-    buyer_id: fromId,
-    origin: 'feed',
-    intent_detected: 'Dúvida sobre peça',
-    comment_text: text,
-    status: 'aguardando',
-    wait_time_seconds: 0,
-    created_at: new Date().toISOString(),
-  };
-
   if (isSupabaseConfigured) {
-    await supabase.from('interactions').insert([interactionData]);
+    try {
+      const dbStoreId = await ensureStoreInSupabase({
+        id: storeId,
+        username: storeUsername,
+        name: session?.account?.name,
+      });
+
+      if (dbStoreId) {
+        const db = getServerSupabase();
+        await db.from('interactions').insert([
+          {
+            store_id: dbStoreId,
+            buyer_username: fromHandle,
+            buyer_id: fromId,
+            origin: 'feed',
+            intent_detected: 'Dúvida sobre peça',
+            comment_text: text,
+            status: 'aguardando',
+            wait_time_seconds: 0,
+            created_at: new Date().toISOString(),
+          },
+        ]);
+      }
+    } catch (dbErr) {
+      console.warn('[Supabase Interaction Warn]:', dbErr);
+    }
   }
 
   // 2. Filtro Estrito de Intenção de Venda / Compra / Serviços para comentários
@@ -418,21 +432,49 @@ async function handleMessagingEvent(msgEvent: any) {
     console.log(`🎉 [Worker SUCESSO] Direct enviado para ${buyerHandle}! Resposta Meta:`, dmRes);
 
     if (isSupabaseConfigured) {
-      await supabase.from('interactions').insert([
-        {
-          store_id: resolvedStoreId,
-          buyer_username: buyerHandle,
-          buyer_id: senderId,
-          origin: 'story',
-          intent_detected: customerRes.productTitle ? `Story: ${customerRes.productTitle}` : 'Dúvida no Story',
-          comment_text: text || 'Resposta ao Story',
-          store_reply_text: customerRes.replyText,
-          status: 'respondido',
-          ai_handled: true,
-          created_at: new Date().toISOString(),
-          replied_at: new Date().toISOString(),
-        },
-      ]);
+      try {
+        const dbStoreId = await ensureStoreInSupabase({
+          id: resolvedStoreId,
+          username: session?.account?.username,
+          name: resolvedStoreName,
+        });
+
+        if (dbStoreId) {
+          const db = getServerSupabase();
+          await db.from('interactions').insert([
+            {
+              store_id: dbStoreId,
+              buyer_username: buyerHandle,
+              buyer_id: senderId,
+              origin: 'story',
+              intent_detected: customerRes.productTitle ? `Story: ${customerRes.productTitle}` : 'Dúvida no Story',
+              comment_text: text || 'Resposta ao Story',
+              store_reply_text: customerRes.replyText,
+              status: 'respondido',
+              ai_handled: true,
+              created_at: new Date().toISOString(),
+              replied_at: new Date().toISOString(),
+            },
+          ]);
+
+          await db.from('conversations').upsert(
+            {
+              store_id: dbStoreId,
+              buyer_id: senderId,
+              buyer_username: buyerHandle,
+              metadata: {
+                last_story_url: storyUrl,
+                last_reply: customerRes.replyText,
+                detected_product: customerRes.productTitle || null,
+              },
+              last_interaction_at: new Date().toISOString(),
+            },
+            { onConflict: 'store_id,buyer_id' }
+          );
+        }
+      } catch (dbErr) {
+        console.warn('[Supabase Story Interaction Warn]:', dbErr);
+      }
     }
 
     console.log(`========================================================================\n`);
@@ -485,21 +527,49 @@ async function handleMessagingEvent(msgEvent: any) {
       console.log(`🎉 [Worker SUCESSO] Direct entregue com sucesso pela Meta para ${buyerHandle}! Resposta Meta:`, dmRes);
 
       if (isSupabaseConfigured) {
-        await supabase.from('interactions').insert([
-          {
-            store_id: resolvedStoreId,
-            buyer_username: buyerHandle,
-            buyer_id: senderId,
-            origin: 'direct',
-            intent_detected: orchestration.selectedAgentName,
-            comment_text: text,
-            store_reply_text: replyText,
-            status: 'respondido',
-            ai_handled: true,
-            created_at: new Date().toISOString(),
-            replied_at: new Date().toISOString(),
-          },
-        ]);
+        try {
+          const dbStoreId = await ensureStoreInSupabase({
+            id: resolvedStoreId,
+            username: session?.account?.username,
+            name: resolvedStoreName,
+          });
+
+          if (dbStoreId) {
+            const db = getServerSupabase();
+            await db.from('interactions').insert([
+              {
+                store_id: dbStoreId,
+                buyer_username: buyerHandle,
+                buyer_id: senderId,
+                origin: 'direct',
+                intent_detected: orchestration.selectedAgentName,
+                comment_text: text,
+                store_reply_text: replyText,
+                status: 'respondido',
+                ai_handled: true,
+                created_at: new Date().toISOString(),
+                replied_at: new Date().toISOString(),
+              },
+            ]);
+
+            await db.from('conversations').upsert(
+              {
+                store_id: dbStoreId,
+                buyer_id: senderId,
+                buyer_username: buyerHandle,
+                metadata: {
+                  last_message: text,
+                  last_reply: replyText,
+                  agent: orchestration.selectedAgentName,
+                },
+                last_interaction_at: new Date().toISOString(),
+              },
+              { onConflict: 'store_id,buyer_id' }
+            );
+          }
+        } catch (dbErr) {
+          console.warn('[Supabase Direct Interaction Warn]:', dbErr);
+        }
       }
     } catch (err: any) {
       console.error(`❌ [Worker Direct Erro]:`, err.message);
