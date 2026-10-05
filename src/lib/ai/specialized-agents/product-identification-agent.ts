@@ -4,6 +4,7 @@ import { buildProductCleanUrl } from '../../catalog/url-helpers.ts';
 import type { ProductItem } from '../../catalog/types.ts';
 import { generateEmbedding, cosineSimilarity } from '../embedding-service.ts';
 import { matchStoryProductWithJevAndOpenAI } from '../story-product-matcher.ts';
+import { getFriendlyFirstName } from './name-helper.ts';
 
 /**
  * Agente Especialista: Identificação de Produtos & Estoque
@@ -16,7 +17,7 @@ export class ProductIdentificationAgent implements ISpecializedAgent {
 
   async execute(ctx: SpecializedAgentContext): Promise<SpecializedAgentResult> {
     const catalog = getServerCatalog(ctx.catalogSlug);
-    const storeName = catalog.storeName || ctx.storeName || 'Loja';
+    const storeName = catalog.storeName || ctx.storeName || 'Quota';
     const products: ProductItem[] = catalog.products || [];
     const canShareCatalog = isCatalogPublishable(catalog);
     const catalogUrl = canShareCatalog ? `${ctx.appUrl}/${ctx.catalogSlug}` : undefined;
@@ -67,16 +68,15 @@ export class ProductIdentificationAgent implements ISpecializedAgent {
     }
 
     const isFirstContact = ctx.isFirstContact !== false;
-    const cleanUsername = ctx.buyerUsername && ctx.buyerUsername !== 'Cliente' ? ctx.buyerUsername : '';
-    const initialGreeting = cleanUsername ? `Oie, ${cleanUsername}!` : 'Oie!';
-    const naturalPrefix = cleanUsername ? `${cleanUsername}, ` : '';
+    const firstName = getFriendlyFirstName(ctx.buyerUsername);
+    const initialGreeting = firstName ? `Oie, ${firstName}!` : 'Oie!';
 
     const rawText = (ctx.messageText || '').trim();
 
     // 1. Detecção de respostas de continuação/negação a pedidos de print/foto ("não tenho", "não tenho print", "não")
     const isNegationToPrint = /^(não|nao|não tenho|nao tenho|não tirei|nao tirei|não tenho print|nao tenho print|sem print|não tenho foto|nao tenho foto|perdi|não achei|nao achei)\b/i.test(rawText);
     if (isNegationToPrint && !isFirstContact) {
-      const reply = `${naturalPrefix}sem problemas! Me conta então como você gostaria: qual peça, cor ou estilo você tem em mente? Assim eu já vejo as opções perfeitas para você! ✨`;
+      const reply = `Sem problemas! Me conta então como você gostaria: qual peça, cor ou estilo você tem em mente? Assim eu já vejo as opções perfeitas para você! ✨`;
       return {
         agentType: this.type,
         agentName: this.name,
@@ -107,8 +107,8 @@ export class ProductIdentificationAgent implements ISpecializedAgent {
         } else {
           // Conversa em andamento: resposta direta e natural
           reply = canShareCatalog && catalogUrl
-            ? `${naturalPrefix}no momento não temos **${extractedSubject}** disponível em nosso estoque pronta-entrega. Você pode conferir os lançamentos disponíveis no nosso catálogo oficial:\n👉 ${catalogUrl}\n\nSe tiver alguma foto de referência ou quiser ver outros modelos, me avisa por aqui!`
-            : `${naturalPrefix}no momento não temos **${extractedSubject}** disponível em nosso estoque pronta-entrega. Se você tiver alguma foto de referência de post ou story, pode me mandar o print aqui que eu vejo se conseguimos para você com a nossa equipe!`;
+            ? `No momento não temos **${extractedSubject}** disponível em nosso estoque pronta-entrega. Você pode conferir os lançamentos disponíveis no nosso catálogo oficial:\n👉 ${catalogUrl}\n\nSe tiver alguma foto de referência ou quiser ver outros modelos, me avisa por aqui!`
+            : `No momento não temos **${extractedSubject}** disponível em nosso estoque pronta-entrega. Se você tiver alguma foto de referência de post ou story, pode me mandar o print aqui que eu vejo se conseguimos para você com a nossa equipe!`;
         }
       } else {
         // O cliente não especificou nenhum modelo ainda (exploração inicial)
@@ -119,8 +119,8 @@ export class ProductIdentificationAgent implements ISpecializedAgent {
         } else {
           // Conversa em andamento: pergunta de forma natural sem repetir a saudação inicial
           reply = canShareCatalog && catalogUrl
-            ? `${naturalPrefix}você pode ver todos os modelos atualizados no nosso catálogo oficial:\n👉 ${catalogUrl}\n\nMe conta: que estilo ou modelo você tem em mente?`
-            : `${naturalPrefix}me conta: qual modelo, estilo ou peça você tem em mente? Ou se viu algo nos nossos posts ou stories, pode me mandar o print aqui!`;
+            ? `Você pode ver todos os modelos atualizados no nosso catálogo oficial:\n👉 ${catalogUrl}\n\nMe conta: que estilo ou modelo você tem em mente?`
+            : `Me conta: qual modelo, estilo ou peça você tem em mente? Ou se viu algo nos nossos posts ou stories, pode me mandar o print aqui!`;
         }
       }
 
@@ -160,7 +160,7 @@ export class ProductIdentificationAgent implements ISpecializedAgent {
 
     const replyText = isFirstContact
       ? `${initialGreeting} Temos sim o *${bestMatch.name}*! ${stockNotice}\n\n💰 *Valor:* ${priceFormatted}${sizeDetails}${linkSection}`
-      : `${naturalPrefix}temos sim o *${bestMatch.name}*! ${stockNotice}\n\n💰 *Valor:* ${priceFormatted}${sizeDetails}${linkSection}`;
+      : `Temos sim o *${bestMatch.name}*! ${stockNotice}\n\n💰 *Valor:* ${priceFormatted}${sizeDetails}${linkSection}`;
 
     return {
       agentType: this.type,

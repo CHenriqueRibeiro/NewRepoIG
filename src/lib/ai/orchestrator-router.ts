@@ -156,6 +156,62 @@ export class JevAgentOrchestrator {
       };
     }
 
+    const norm = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+
+    // 0. Fast-Path Heurístico Instantâneo (< 2ms): economiza ~600ms de chamada externa quando a intenção é evidente
+    let fastPathType: SpecializedAgentType | null = null;
+    let fastPathConfidence = 0.98;
+
+    // A. Saudações puras ou saudações curtas
+    if (/^(oi|ola|oie|oii|oiii|bom dia|boa tarde|boa noite|e ai|e aí|tudo bem|tudo bom|opa)$/i.test(norm)) {
+      fastPathType = 'faq_general';
+    }
+    // B. Perguntas explícitas sobre promoção / desconto / liquidação
+    else if (/^(tem promocao|tem desconto|queria saber se tem promocao|tem liquidacao|tem pecas em promocao|tem peca em promocao|esta na promocao|tem saldao|quais as promocoes|promocao|promocoes|desconto|descontos)$/i.test(norm)) {
+      fastPathType = 'faq_general';
+    }
+    // C. Pedido direto do link / catálogo / site da loja
+    else if (/^(catalogo|link|site|vitrine|manda o link|me manda o link|manda o catalogo|passa o link|ver catalogo|ver vitrine|qual o link|qual o site|onde vejo os produtos)$/i.test(norm)) {
+      fastPathType = 'catalog_link';
+    }
+    // D. Dúvidas diretas de endereço / retirada / localização
+    else if (/^(onde fica|qual o endereco|qual o ponto de retirada|onde e a loja|como chegar|onde retirar|endereco|localizacao)$/i.test(norm)) {
+      fastPathType = 'store_address';
+    }
+    // E. Dúvidas diretas de pagamento / PIX
+    else if (/^(qual o pix|chave pix|passa o pix|manda o pix|dados para pagar|dados do pix|como pagar|pagar no pix)$/i.test(norm)) {
+      fastPathType = 'checkout_pix';
+    }
+
+    if (fastPathType) {
+      const specialist = this.agents.get(fastPathType)!;
+      const execResult = await specialist.execute(ctx);
+      if (ctx.buyerId && ctx.storeId) {
+        await intelligentCatalogService.updateConversationContext(
+          ctx.storeId,
+          ctx.buyerId,
+          execResult.product?.id,
+          ctx.storyMediaId,
+          ctx.buyerUsername,
+          {
+            greeting_sent: true,
+            turn_count: turnCount,
+            last_customer_text: text,
+            last_reply_text: execResult.replyText,
+            last_agent_type: fastPathType,
+          }
+        );
+      }
+      return {
+        shouldReply: true,
+        selectedAgentType: fastPathType,
+        selectedAgentName: specialist.name,
+        jevConfidence: fastPathConfidence,
+        jevRoutingSource: 'heuristic_fallback',
+        executionResult: execResult,
+      };
+    }
+
     // 1. Tenta rotear via TypeSafe AI (Jev)
     if (isTypeSafeConfigured(customApiKey)) {
       try {

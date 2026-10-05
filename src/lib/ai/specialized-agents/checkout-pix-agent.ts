@@ -1,6 +1,7 @@
 import type { ISpecializedAgent, SpecializedAgentContext, SpecializedAgentResult } from './types.ts';
 import { getServerCatalog, isCatalogPublishable } from '../../catalog/storage.ts';
 import { formatPixKeyDisplay, getPixKeyTypeLabel } from '../../pix/brcode.ts';
+import { getFriendlyFirstName } from './name-helper.ts';
 
 /**
  * Agente Especialista: Pagamentos & PIX
@@ -14,11 +15,12 @@ export class CheckoutPixAgent implements ISpecializedAgent {
   async execute(ctx: SpecializedAgentContext): Promise<SpecializedAgentResult> {
     const catalog = getServerCatalog(ctx.catalogSlug);
     const pConfig = catalog.paymentConfig;
-    const storeName = catalog.storeName || ctx.storeName || 'Loja';
+    const storeName = catalog.storeName || ctx.storeName || 'Quota';
     const canShareCatalog = isCatalogPublishable(catalog);
     const catalogUrl = canShareCatalog ? `${ctx.appUrl}/${ctx.catalogSlug}` : undefined;
 
-    const greeting = ctx.buyerUsername && ctx.buyerUsername !== 'Cliente' ? `Perfeito, ${ctx.buyerUsername}!` : 'Perfeito!';
+    const firstName = getFriendlyFirstName(ctx.buyerUsername);
+    const greeting = ctx.isFirstContact !== false && firstName ? `Perfeito, ${firstName}!` : 'Perfeito!';
 
     if (!pConfig?.pixEnabled || !pConfig.pixKey) {
       // Se a loja tem catálogo aprovado com produtos, direciona para a sacola

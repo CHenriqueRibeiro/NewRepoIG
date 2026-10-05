@@ -1,5 +1,6 @@
 import type { ISpecializedAgent, SpecializedAgentContext, SpecializedAgentResult } from './types.ts';
 import { getServerCatalog, isCatalogPublishable } from '../../catalog/storage.ts';
+import { getFriendlyFirstName } from './name-helper.ts';
 
 /**
  * Agente Especialista: Localização, Endereço & Retirada
@@ -12,20 +13,19 @@ export class StoreAddressAgent implements ISpecializedAgent {
 
   async execute(ctx: SpecializedAgentContext): Promise<SpecializedAgentResult> {
     const catalog = getServerCatalog(ctx.catalogSlug);
-    const storeName = catalog.storeName || ctx.storeName || 'nossa loja';
+    const storeName = catalog.storeName || ctx.storeName || 'Quota';
     const location = catalog.locationText || 'São Paulo, SP';
     const hours = catalog.schedulingConfig?.businessHours || 'Segunda a Sábado, das 09h às 18h';
     const canShareCatalog = isCatalogPublishable(catalog);
     const catalogUrl = canShareCatalog ? `${ctx.appUrl}/${ctx.catalogSlug}` : undefined;
 
     const isFirstContact = ctx.isFirstContact !== false;
-    const cleanUsername = ctx.buyerUsername && ctx.buyerUsername !== 'Cliente' ? ctx.buyerUsername : '';
-    const initialGreeting = cleanUsername ? `Olá, ${cleanUsername}!` : 'Olá!';
-    const naturalPrefix = cleanUsername ? `${cleanUsername}, ` : '';
+    const firstName = getFriendlyFirstName(ctx.buyerUsername);
+    const initialGreeting = firstName ? `Olá, ${firstName}!` : 'Olá!';
 
     let replyText = isFirstContact
       ? `${initialGreeting} Seguem as informações do nosso espaço:\n\n📍 *Endereço:* ${location}\n🕒 *Horário de Atendimento:* ${hours}\n\n`
-      : `${naturalPrefix}seguem as informações de endereço e retirada do nosso espaço:\n\n📍 *Endereço:* ${location}\n🕒 *Horário de Atendimento:* ${hours}\n\n`;
+      : `Seguem as informações de endereço e retirada do nosso espaço:\n\n📍 *Endereço:* ${location}\n🕒 *Horário de Atendimento:* ${hours}\n\n`;
 
     if (catalog.shipping?.pickupEnabled) {
       replyText += `🛍️ *Retirada no Local:* Disponível gratuitamente! Você pode reservar as peças e retirar pessoalmente.\n`;
