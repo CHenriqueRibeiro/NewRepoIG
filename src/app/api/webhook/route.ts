@@ -175,23 +175,22 @@ export async function POST(request: NextRequest) {
 
   console.log('📦 Conteúdo do Evento:', JSON.stringify(body, null, 2));
 
-  // 3. Despacho assíncrono para o Worker
+  // 3. Despacho garantido para o Worker
   const workerUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/worker`;
   console.log(`🚀 Despachando evento para processamento no Worker: ${workerUrl}`);
 
-  dispatchTask({
-    destinationUrl: workerUrl,
-    body,
-  })
-    .then((res) => {
-      console.log(`✅ [Worker Dispatch] Despachado com sucesso. Status:`, res);
-    })
-    .catch((err) => {
-      console.error(`❌ [Worker Dispatch Error]:`, err);
+  try {
+    const dispatchRes = await dispatchTask({
+      destinationUrl: workerUrl,
+      body,
     });
+    console.log(`✅ [Worker Dispatch] Despachado com sucesso. Status:`, dispatchRes);
+  } catch (err: any) {
+    console.error(`❌ [Worker Dispatch Error]:`, err.message);
+  }
 
   const elapsedMs = Date.now() - startTime;
-  console.log(`⚡ Resposta rápida 200 EVENT_RECEIVED emitida em ${elapsedMs}ms`);
+  console.log(`⚡ Resposta 200 EVENT_RECEIVED emitida em ${elapsedMs}ms`);
   console.log('==========================================================================\n');
 
   recordLog({

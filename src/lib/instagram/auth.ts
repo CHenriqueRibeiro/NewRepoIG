@@ -35,12 +35,12 @@ const DEFAULT_SANDBOX_ACCOUNT: InstagramAccountProfile = {
 // Sessão padrão inicial para desenvolvimento
 if (global.__activeInstagramSession === undefined) {
   const envToken = process.env.INSTAGRAM_ACCESS_TOKEN?.trim();
-  if (envToken && !envToken.includes('mock') && envToken.startsWith('IGA')) {
+  if (envToken && !envToken.includes('mock') && (envToken.startsWith('IGA') || envToken.startsWith('EAA'))) {
     global.__activeInstagramSession = {
       account: {
-        id: process.env.INSTAGRAM_ACCOUNT_ID || 'ig_default_account',
-        username: process.env.INSTAGRAM_ACCOUNT_USERNAME || 'instagram',
-        name: process.env.INSTAGRAM_ACCOUNT_NAME || 'Minha Loja',
+        id: process.env.INSTAGRAM_ACCOUNT_ID || '28405571815802519',
+        username: process.env.INSTAGRAM_ACCOUNT_USERNAME || 'app_quota',
+        name: process.env.INSTAGRAM_ACCOUNT_NAME || 'Quota',
         profilePictureUrl: '',
         accountType: 'BUSINESS',
         connectedAt: new Date().toISOString(),
@@ -352,13 +352,13 @@ export function getActiveInstagramSession(): InstagramSession | null {
     (!global.__activeInstagramSession || global.__activeInstagramSession.account.isSandbox) &&
     envToken &&
     !envToken.includes('mock') &&
-    envToken.startsWith('IGA')
+    (envToken.startsWith('IGA') || envToken.startsWith('EAA'))
   ) {
     global.__activeInstagramSession = {
       account: {
-        id: process.env.INSTAGRAM_ACCOUNT_ID || 'ig_default_account',
-        username: process.env.INSTAGRAM_ACCOUNT_USERNAME || 'instagram',
-        name: process.env.INSTAGRAM_ACCOUNT_NAME || 'Minha Loja',
+        id: process.env.INSTAGRAM_ACCOUNT_ID || '28405571815802519',
+        username: process.env.INSTAGRAM_ACCOUNT_USERNAME || 'app_quota',
+        name: process.env.INSTAGRAM_ACCOUNT_NAME || 'Quota',
         profilePictureUrl: '',
         accountType: 'BUSINESS',
         connectedAt: new Date().toISOString(),

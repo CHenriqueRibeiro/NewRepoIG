@@ -3,14 +3,16 @@ import { Client } from '@upstash/qstash';
 export function getQStashClient() {
   const token = process.env.QSTASH_TOKEN;
   if (token && !token.includes('your-upstash')) {
-    return new Client({ token });
+    const baseUrl = process.env.QSTASH_URL || 'https://qstash-us-east-1.upstash.io';
+    return new Client({ token, baseUrl });
   }
   return null;
 }
 
 /**
- * Despacha uma mensagem assíncrona para um endpoint via Upstash QStash.
- * Suporta delayed tasks (ex: 15 minutos para o Modo Guarda-Costas).
+ * Despacha uma mensagem assíncrona para um endpoint via chamada direta ou Upstash QStash.
+ * - Mensagens em tempo real (delaySeconds === 0): Despacho direto sub-segundo para o Worker
+ * - Tarefas agendadas (delaySeconds > 0): QStash com suporte a atraso (ex: 15min Guarda-Costas)
  */
 export async function dispatchTask(params: {
   destinationUrl: string;
@@ -18,42 +20,58 @@ export async function dispatchTask(params: {
   delaySeconds?: number;
   deduplicationId?: string;
 }) {
-  const client = getQStashClient();
   const { destinationUrl, body, delaySeconds = 0, deduplicationId } = params;
 
-  // Se a URL for loopback/localhost, não envia para o QStash na nuvem (o servidor da Upstash não alcança seu computador local)
-  const isLoopback =
-    destinationUrl.includes('localhost') ||
-    destinationUrl.includes('127.0.0.1') ||
-    destinationUrl.includes('::1');
-
-  if (client && !isLoopback) {
-    try {
-      const response = await client.publishJSON({
-        url: destinationUrl,
-        body,
-        delay: delaySeconds,
-        deduplicationId,
-        retries: 3,
-      });
-      return { success: true, messageId: response.messageId };
-    } catch (err: any) {
-      console.warn('[QStash Publish Warn - executando via fallback local]:', err.message);
+  // 1. Tarefas com atraso agendado (ex: Guarda-costas 15 minutos): DEVE usar o QStash
+  if (delaySeconds > 0) {
+    const client = getQStashClient();
+    if (client) {
+      try {
+        const response = await client.publishJSON({
+          url: destinationUrl,
+          body,
+          delay: delaySeconds,
+          deduplicationId,
+          retries: 3,
+        });
+        console.log(`[QStash Delayed Task] Agendado com sucesso para ${delaySeconds}s (msgId: ${response.messageId})`);
+        return { success: true, messageId: response.messageId };
+      } catch (err: any) {
+        console.warn('[QStash Publish Error on delayed task]:', err.message);
+      }
     }
   }
 
-  // Fallback e Desenvolvimento Local: invoca diretamente o endpoint local do Worker
+  // 2. Mensagens em tempo real (delaySeconds === 0): Despacho direto e imediato para o Worker
   try {
-    const localTarget = isLoopback ? destinationUrl : `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/worker`;
-    const localRes = await fetch(localTarget, {
+    const res = await fetch(destinationUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-    console.log(`[Local Task Dispatch] Despachado diretamente para o Worker local: ${localTarget} - Status: ${localRes.status}`);
-    return { success: true, messageId: `local-msg-${Date.now()}` };
-  } catch (err: any) {
-    console.error(`[Local Task Dispatch Error]:`, err.message);
-    return { success: false, error: err.message };
+    console.log(`[Direct Task Dispatch] Despachado diretamente para o Worker: ${destinationUrl} - Status: ${res.status}`);
+    return { success: res.ok, status: res.status, messageId: `direct-msg-${Date.now()}` };
+  } catch (directErr: any) {
+    console.warn(`[Direct Task Dispatch Warn - tentando fallback QStash]:`, directErr.message);
+
+    // Se o envio direto falhar (ex: rede temporária), tenta QStash como fila de garantia
+    const client = getQStashClient();
+    if (client) {
+      try {
+        const response = await client.publishJSON({
+          url: destinationUrl,
+          body,
+          delay: 0,
+          deduplicationId,
+          retries: 3,
+        });
+        console.log(`[QStash Fallback] Mensagem entregue via QStash: ${response.messageId}`);
+        return { success: true, messageId: response.messageId };
+      } catch (qstashErr: any) {
+        console.error('[QStash Fallback Error]:', qstashErr.message);
+      }
+    }
+
+    return { success: false, error: directErr.message };
   }
 }
