@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 /**
@@ -8,7 +8,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
  * /c/[slug] -> /[slug]
  * /c/[slug]?p=xyz -> /[slug]/[xyz]
  */
-export default function LegacyPublicCatalogPage({
+function LegacyCatalogRedirect({
   params,
 }: {
   params: { slug: string };
@@ -33,5 +33,25 @@ export default function LegacyPublicCatalogPage({
         Carregando boutique...
       </div>
     </div>
+  );
+}
+
+export default function LegacyPublicCatalogPage({
+  params,
+}: {
+  params: { slug: string };
+}) {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-stone-50 flex items-center justify-center">
+          <div className="text-stone-400 text-sm font-medium animate-pulse">
+            Carregando boutique...
+          </div>
+        </div>
+      }
+    >
+      <LegacyCatalogRedirect params={params} />
+    </Suspense>
   );
 }
