@@ -523,9 +523,9 @@ export class CustomerIntentDiscoveryAgent {
       };
     }
 
-    // 11. Dúvida sobre frete / entrega / motoboy / retirada
-    const shippingRegex = /\b(entrega|entregam|envia|enviam|frete|motoboy|uber|sedex|pac|correio|correios|retirada|retirar|buscar|onde fica|endereco|loja fisica|localizacao|bairro|cidade|aberto|abrem?|horario de funcionamento|horario de atendimento|funciona (hoje|sabado|domingo|feriado)|que horas|ate que horas)\b/i;
-    if (shippingRegex.test(cleanWords)) {
+    // 11. Dúvida sobre frete / entrega / motoboy / retirada / CEP
+    const shippingRegex = /\b(entrega|entregam|entregas|envia|enviam|envio|frete|motoboy|uber|sedex|pac|correio|correios|transportadora|cep|retirada|retirar|buscar|onde fica|endereco|loja fisica|localizacao|bairro|cidade|aberto|abrem?|horario de funcionamento|horario de atendimento|funciona (hoje|sabado|domingo|feriado)|que horas|ate que horas)\b/i;
+    if (shippingRegex.test(cleanWords) || /\b\d{5}-?\d{3}\b/.test(raw)) {
       return {
         shouldReply: true,
         primaryIntent: 'shipping_inquiry',

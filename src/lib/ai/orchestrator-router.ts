@@ -34,8 +34,8 @@ export const AGENT_SEMANTIC_PROTOTYPES: Record<
 > = {
   checkout_pix: {
     title: 'Pagamento & PIX',
-    description: 'Chave pix, transferência bancária, pagamento de pedido, como pagar, finalizar compra e enviar comprovante financeiro',
-    semanticContext: 'pagamento pix transferência bancária transferir transfiro transferindo chave bancaria dados para pagar valor quantia montante custo preco finalizar pedido efetuar quitacao comprovante enviado fechar compra fechar encomenda dinheiro qr code copia e cola pagar agora quitar',
+    description: 'Chave pix, transferência bancária, pagamento de pedido, como pagar, finalizar compra e comprovante financeiro',
+    semanticContext: 'pagamento pix transferência bancária transferir transfiro transferindo chave bancaria dados para pagar valor quantia montante custo preco finalizar pedido efetuar quitacao comprovante emitido comprovante pago fechar compra fechar encomenda dinheiro qr code copia e cola pagar agora quitar',
   },
   store_address: {
     title: 'Endereço & Retirada Presencial',
@@ -58,9 +58,9 @@ export const AGENT_SEMANTIC_PROTOTYPES: Record<
     semanticContext: 'produto peca roupa vestido blusa saia calca tamanho cor modelo caimento tecido quanto custa valor preco tem disponivel pronta entrega estoque reserve para mim foto story',
   },
   faq_general: {
-    title: 'FAQ & Saudações Gerais',
-    description: 'Saudações de boas-vindas, cumprimento cordial, funcionamento geral da loja, dúvidas frequentes institucionais',
-    semanticContext: 'saudacao cordial ola oi oie bom dia boa tarde boa noite como funciona tudo bem tudo joia prazer duvida geral politica atendimento bem vindo orientacoes institucionais',
+    title: 'FAQ, Frete & Saudações Gerais',
+    description: 'Dúvidas sobre frete, envio, entrega para o CEP, correios, sedex, pac, transportadora, prazos de entrega, saudações de boas-vindas e funcionamento geral',
+    semanticContext: 'frete envio envia enviam entrega entregam entregas correios sedex pac transportadora cep meu cep calcula frete calculo de frete prazo de entrega entrega para meu cep entrega para todo brasil taxa de entrega saudacao cordial ola oi oie bom dia boa tarde boa noite como funciona tudo bem tudo joia duvida geral atendimento',
   },
   silence_ignore: {
     title: 'Silêncio Comercial',
@@ -182,6 +182,10 @@ export class JevAgentOrchestrator {
     else if (/^(qual o pix|chave pix|passa o pix|manda o pix|dados para pagar|dados do pix|como pagar|pagar no pix)$/i.test(norm)) {
       fastPathType = 'checkout_pix';
     }
+    // F. Dúvidas diretas de frete, envio, entrega ou CEP
+    else if (/\b(frete|envio|envia|enviam|entrega|entregam|entregas|correios|sedex|pac|transportadora|cep)\b/i.test(norm) || /\b\d{5}-?\d{3}\b/.test(text)) {
+      fastPathType = 'faq_general';
+    }
 
     if (fastPathType) {
       const specialist = this.agents.get(fastPathType)!;
@@ -242,9 +246,9 @@ export class JevAgentOrchestrator {
                   store_address:
                     'Cliente perguntando onde fica a loja física, endereço, ponto de retirada no local, como chegar ou horário de funcionamento.',
                   checkout_pix:
-                    'Cliente querendo comprar, pagar, pedindo chave PIX, dados bancários, como fazer transferência ou envio de comprovante.',
+                    'Cliente querendo pagar, pedindo chave PIX, dados bancários para transferência ou confirmando pagamento com comprovante. NUNCA selecione para dúvidas de frete, envio, entrega ou CEP.',
                   faq_general:
-                    'Apenas saudações simples ("oi", "bom dia", "olá") ou dúvidas gerais sobre como a loja funciona sem especificar nenhuma peça.',
+                    'Dúvidas sobre frete, cálculo de envio, entrega, Correios, Sedex, PAC, prazos de entrega, envio para o CEP do cliente, ou saudações de boas-vindas e funcionamento geral.',
                   human_handoff:
                     'Cliente bravo, com reclamação de pedido, problema de entrega, insatisfeito ou pedindo explicitamente atendente humano.',
                   silence_ignore:

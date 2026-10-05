@@ -2,6 +2,7 @@ import type { ISpecializedAgent, SpecializedAgentContext, SpecializedAgentResult
 import { getServerCatalog, isCatalogPublishable } from '../../catalog/storage.ts';
 import { formatPixKeyDisplay, getPixKeyTypeLabel } from '../../pix/brcode.ts';
 import { getFriendlyFirstName } from './name-helper.ts';
+import { faqAgent } from './faq-agent.ts';
 
 /**
  * Agente Especialista: Pagamentos & PIX
@@ -13,6 +14,15 @@ export class CheckoutPixAgent implements ISpecializedAgent {
   readonly description = 'Fornece a chave PIX da loja, dados do titular e instruções para confirmação do pedido.';
 
   async execute(ctx: SpecializedAgentContext): Promise<SpecializedAgentResult> {
+    const rawText = (ctx.messageText || '').toLowerCase().trim();
+    const isExplicitPayment = /\b(pix|pagar|pagamento|transfer[êe]ncia|banco|comprovante|chave|qr code|copia e cola)\b/i.test(rawText);
+    const isShippingOrCep = /\b(frete|entrega|entregam|entregas|envia|enviam|envio|correios|sedex|pac|transportadora|cep)\b/i.test(rawText) || /\b\d{5}-?\d{3}\b/.test(rawText);
+
+    // Salvaguarda: Se a pergunta for sobre envio/frete/CEP sem menção de pagamento, delega ao FaqAgent
+    if (isShippingOrCep && !isExplicitPayment) {
+      return faqAgent.execute(ctx);
+    }
+
     const catalog = getServerCatalog(ctx.catalogSlug);
     const pConfig = catalog.paymentConfig;
     const storeName = catalog.storeName || ctx.storeName || 'Quota';

@@ -48,4 +48,26 @@ test('Apresentação Oficial com Nome e @username do Instagram', async (t) => {
     assert.doesNotMatch(secondTurn.replyText, /assistente virtual/i);
     assert.doesNotMatch(secondTurn.replyText, /Minha Loja/i);
   });
+
+  await t.test('4. Pergunta sobre envio para CEP ("envia pro meu cep") responde frete e NUNCA fala de PIX', async () => {
+    const data = await callOrchestrator('envia pro meu cep', 'Mariana');
+
+    assert.equal(data.success, true);
+    assert.equal(data.shouldReply, true);
+    assert.equal(data.selectedAgentType, 'faq_general');
+    assert.match(data.replyText, /Enviamos sim para todo o Brasil/i);
+    assert.doesNotMatch(data.replyText, /pix/i);
+    assert.doesNotMatch(data.replyText, /pagamento/i);
+  });
+
+  await t.test('5. Pergunta com CEP específico reconhece o CEP e NUNCA fala de PIX', async () => {
+    const data = await callOrchestrator('vocês enviam para o cep 01310-100?', 'Carlos');
+
+    assert.equal(data.success, true);
+    assert.equal(data.shouldReply, true);
+    assert.equal(data.selectedAgentType, 'faq_general');
+    assert.match(data.replyText, /01310-100/);
+    assert.match(data.replyText, /Enviamos sim/i);
+    assert.doesNotMatch(data.replyText, /pix/i);
+  });
 });

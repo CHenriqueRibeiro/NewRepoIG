@@ -43,15 +43,25 @@ export class FaqAgent implements ISpecializedAgent {
       };
     }
 
-    // 2. Perguntas sobre Envio / Frete / Entrega
-    const isShippingQuery = /envio|envia|frete|entrega|entregam|correios|sedex|pac|pacote|manda pra|chega em/i.test(text);
+    // 2. Perguntas sobre Envio / Frete / Entrega / CEP
+    const isShippingQuery = /envio|envia|enviam|frete|entrega|entregam|entregas|correios|sedex|pac|pacote|transportadora|cep|manda pra|manda para|chega em/i.test(text) || /\b\d{5}-?\d{3}\b/.test(text);
     if (isShippingQuery) {
+      const cepMatch = text.match(/\b\d{5}-?\d{3}\b/);
+      const greeting = isFirstContact && firstName ? `Olá, ${firstName}! ` : '';
+
+      let replyText = '';
+      if (cepMatch) {
+        replyText = `${greeting}Enviamos sim para o seu CEP (${cepMatch[0]})! 📦✨ Trabalhamos com envio seguro para todo o Brasil via Correios e transportadora, além de retirada no local. Me conta qual look ou peça você tem interesse para eu calcular o prazo e valor certinho para o seu endereço!`;
+      } else {
+        replyText = `${greeting}Enviamos sim para todo o Brasil! 📦✨ Trabalhamos com envio seguro via Correios, transportadora e também temos opção de retirada no local. Me passa o seu CEP e qual look você gostou que eu já calculo o prazo e valor certinho para você!`;
+      }
+
       return {
         agentType: this.type,
         agentName: this.name,
         shouldReply: true,
-        replyText: `Nós enviamos para todo o Brasil com frete seguro e também temos retirada no local! 📦 Se quiser, me passa seu CEP ou me conta qual peça você gostou que eu já vejo prazos e valores para você! ✨`,
-        confidence: 0.95,
+        replyText,
+        confidence: 0.98,
       };
     }
 
