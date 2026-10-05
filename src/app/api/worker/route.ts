@@ -7,7 +7,7 @@ import { classifySalesIntent } from '@/lib/ai/sales-intent-filter';
 import { jevAgentOrchestrator } from '@/lib/ai/orchestrator-router';
 import { instagramClient } from '@/lib/instagram/client';
 import { dispatchTask } from '@/lib/qstash/client';
-import { getServerSupabase, isSupabaseConfigured, ensureStoreInSupabase } from '@/lib/supabase/client';
+import { getServerSupabase, isSupabaseConfigured, ensureStoreInSupabase, supabase } from '@/lib/supabase/client';
 import { getActiveInstagramSession, getValidAccessToken } from '@/lib/instagram/auth';
 import { decryptAES256GCM } from '@/lib/crypto/encryption';
 import { getServerCatalog, resolveActiveStoreIdentity, isCatalogPublishable } from '@/lib/catalog/storage';

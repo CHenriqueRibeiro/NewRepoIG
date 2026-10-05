@@ -9,7 +9,7 @@ import {
   PriceConfirmationRequest,
 } from './intelligent-types.ts';
 import { getServerCatalog, saveServerCatalog } from './storage.ts';
-import { getServerSupabase, isSupabaseConfigured } from '../supabase/client.ts';
+import { getServerSupabase, isSupabaseConfigured, supabase } from '../supabase/client.ts';
 import { cosineSimilarity, formatForPgVector, generateDeterministicEmbedding } from '../ai/embedding-service.ts';
 
 // Armazenamento em memória para desenvolvimento local / modo sandbox
@@ -353,7 +353,7 @@ export class IntelligentCatalogService {
   ): Promise<Array<{ product: ProductEntity; similarity: number }>> {
     if (isSupabaseConfigured) {
       try {
-        const { data, error } = await supabase.rpc('match_products', {
+        const { data, error } = await getServerSupabase().rpc('match_products', {
           query_embedding: formatForPgVector(queryEmbedding),
           match_threshold: 0.3,
           match_count: limit,
@@ -418,7 +418,7 @@ export class IntelligentCatalogService {
   async getMediaByInstagramId(instagramMediaId: string): Promise<InstagramMediaEntity | null> {
     if (isSupabaseConfigured) {
       try {
-        const { data, error } = await supabase
+        const { data, error } = await getServerSupabase()
           .from('instagram_media')
           .select('*')
           .eq('instagram_media_id', instagramMediaId)
@@ -461,7 +461,7 @@ export class IntelligentCatalogService {
 
     if (isSupabaseConfigured) {
       try {
-        const { data, error } = await supabase
+        const { data, error } = await getServerSupabase()
           .from('instagram_media')
           .insert([media])
           .select()
@@ -485,7 +485,7 @@ export class IntelligentCatalogService {
   ): Promise<InstagramMediaProductRelation> {
     if (isSupabaseConfigured) {
       try {
-        const { data, error } = await supabase
+        const { data, error } = await getServerSupabase()
           .from('instagram_media_products')
           .insert([relation])
           .select()
