@@ -25,7 +25,20 @@ function cleanMockProducts(products?: any[]): any[] {
       id.startsWith('prod-l') ||
       id.startsWith('prod-k') ||
       id.startsWith('tech-');
-    return !isMock;
+    if (isMock) return false;
+
+    // Remove produtos corrompidos com nomes incorretos (ex: "Novidades preto")
+    const name = String(p.name || p.title || '').trim().toLowerCase();
+    if (name === 'novidades preto' || name === 'novidade preto' || name.startsWith('novidades preto')) {
+      return false;
+    }
+
+    // REGRA DO LOJISTA: Produtos só entram na vitrine pública se tiverem valor cadastrado (> 0)
+    if (!p.price || p.price <= 0) {
+      return false;
+    }
+
+    return true;
   });
 }
 

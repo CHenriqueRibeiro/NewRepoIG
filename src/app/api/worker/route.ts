@@ -214,28 +214,30 @@ async function handleCommentChange(value: any) {
       let replyText = '';
 
       if (targetProduct) {
-        const productLink = canShareCatalog ? buildProductCleanUrl(publicUrl, resolvedSlug, targetProduct) : undefined;
-        const priceFormatted = targetProduct.price_cents > 0
-          ? (targetProduct.price_cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-          : undefined;
-
-        const availableVariants = targetProduct.variants
-          ?.filter((v: any) => v.stock_quantity > 0)
-          .map((v: any) => v.name);
-
-        const sizesText = availableVariants && availableVariants.length > 0
-          ? `Tamanhos: ${availableVariants.join(', ')}`
-          : undefined;
-
-        const detailsParts: string[] = [];
-        if (priceFormatted) detailsParts.push(`Valor: ${priceFormatted}`);
-        if (sizesText) detailsParts.push(sizesText);
-        const detailsStr = detailsParts.length > 0 ? ` (${detailsParts.join(' | ')})` : '';
-
-        if (productLink) {
-          replyText = `${greetingName}! Vi seu comentário no nosso post sobre o(a) **${targetProduct.title}**! ✨\n\nEssa peça está disponível${detailsStr}.\n\nVocê pode conferir mais fotos, detalhes e garantir o seu direto na nossa vitrine:\n🔗 ${productLink}\n\nSe tiver qualquer dúvida sobre medidas ou entrega, pode me chamar aqui! 💖`;
+        if (!targetProduct.price_cents || targetProduct.price_cents <= 0) {
+          replyText = `${greetingName}! Vi sua mensagem sobre essa peça! ✨ Ela é uma novidade que acabou de chegar e ainda não está no catálogo com valor oficial, mas em breve vai ser colocada!\nNossa equipe já está finalizando o cadastro. Se quiser, assim que o valor for liberado eu te aviso por aqui! 💖`;
         } else {
-          replyText = `${greetingName}! Vi seu comentário no nosso post sobre o(a) **${targetProduct.title}**! ✨\n\nEssa peça está disponível${detailsStr}.\n\nSe quiser garantir a sua unidade ou tiver dúvidas sobre tamanhos ou entrega, pode me chamar aqui no direct que te passo todos os detalhes! 💖`;
+          const productLink = canShareCatalog ? buildProductCleanUrl(publicUrl, resolvedSlug, targetProduct) : undefined;
+          const priceFormatted = (targetProduct.price_cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+          const availableVariants = targetProduct.variants
+            ?.filter((v: any) => v.stock_quantity > 0)
+            .map((v: any) => v.name);
+
+          const sizesText = availableVariants && availableVariants.length > 0
+            ? `Tamanhos: ${availableVariants.join(', ')}`
+            : undefined;
+
+          const detailsParts: string[] = [];
+          if (priceFormatted) detailsParts.push(`Valor: ${priceFormatted}`);
+          if (sizesText) detailsParts.push(sizesText);
+          const detailsStr = detailsParts.length > 0 ? ` (${detailsParts.join(' | ')})` : '';
+
+          if (productLink) {
+            replyText = `${greetingName}! Vi seu comentário no nosso post sobre o(a) **${targetProduct.title}**! ✨\n\nEssa peça está disponível${detailsStr}.\n\nVocê pode conferir mais fotos, detalhes e garantir o seu direto na nossa vitrine:\n🔗 ${productLink}\n\nSe tiver qualquer dúvida sobre medidas ou entrega, pode me chamar aqui! 💖`;
+          } else {
+            replyText = `${greetingName}! Vi seu comentário no nosso post sobre o(a) **${targetProduct.title}**! ✨\n\nEssa peça está disponível${detailsStr}.\n\nSe quiser garantir a sua unidade ou tiver dúvidas sobre tamanhos ou entrega, pode me chamar aqui no direct que te passo todos os detalhes! 💖`;
+          }
         }
 
         // 3. PERSISTE O CONTEXTO DA CONVERSA:

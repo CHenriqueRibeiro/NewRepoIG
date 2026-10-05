@@ -23,6 +23,11 @@ declare global {
 
 if (!global.__intelligentProductsStore) {
   global.__intelligentProductsStore = [];
+} else {
+  global.__intelligentProductsStore = global.__intelligentProductsStore.filter((p) => {
+    const t = (p?.title || '').trim().toLowerCase();
+    return t !== 'novidades preto' && t !== 'novidade preto' && !t.startsWith('novidades preto');
+  });
 }
 
 if (!global.__intelligentMediaStore) {
@@ -31,6 +36,12 @@ if (!global.__intelligentMediaStore) {
 
 if (!global.__intelligentRelationsStore) {
   global.__intelligentRelationsStore = [];
+} else {
+  global.__intelligentRelationsStore = global.__intelligentRelationsStore.filter((r) => {
+    const p = (global.__intelligentProductsStore || []).find((prod) => prod.id === r.product_id);
+    if (r.product_id && !p) return false;
+    return true;
+  });
 }
 
 if (!global.__intelligentConversationsStore) {
@@ -701,12 +712,28 @@ export class IntelligentCatalogService {
     // 2. Atualiza no catálogo público da vitrine (getServerCatalog / saveServerCatalog)
     try {
       const activeCatalog = getServerCatalog(catalogSlug);
-      if (activeCatalog?.products) {
+      if (activeCatalog) {
+        activeCatalog.products = activeCatalog.products || [];
         const pIndex = activeCatalog.products.findIndex((p) => p.id === productId);
         if (pIndex !== -1) {
           activeCatalog.products[pIndex].price = priceCents / 100;
-          saveServerCatalog(activeCatalog);
+        } else if (product) {
+          activeCatalog.products.unshift({
+            id: product.id,
+            name: product.title,
+            description: product.description || '',
+            category: product.category || 'Lançamentos',
+            price: priceCents / 100,
+            stock: product.stock_quantity,
+            images: product.image_url ? [product.image_url] : [],
+            isUniquePiece: product.is_unique_piece,
+            badge: 'Recém Chegado do Story',
+            paymentBadge: 'PIX ou Cartão',
+            maxInstallments: 3,
+            installmentWithoutInterest: true,
+          });
         }
+        saveServerCatalog(activeCatalog);
       }
     } catch (e) {
       console.warn('[ConfirmPrice Catalog Save Warn]', e);

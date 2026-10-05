@@ -37,10 +37,12 @@ export async function POST(req: NextRequest) {
     const storeId = session?.account?.id || 'store_demo_vitryne';
 
     // Se uma mídia específica foi enviada no payload (ex: teste, webhook ou simulação)
-    if (body.instagramMediaId && body.mediaUrl) {
+    const mediaId = body.instagramMediaId || body.mediaId;
+    if (mediaId && body.mediaUrl) {
       const result = await processIncomingInstagramMedia({
         storeId,
-        instagramMediaId: body.instagramMediaId,
+        catalogSlug: body.catalogSlug,
+        instagramMediaId: mediaId,
         mediaType: body.mediaType || 'IMAGE',
         mediaUrl: body.mediaUrl,
         thumbnailUrl: body.thumbnailUrl,

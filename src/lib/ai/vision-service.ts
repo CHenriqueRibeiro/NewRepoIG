@@ -16,7 +16,8 @@ export interface VisionAnalysisResult {
 export function buildCanonicalDescription(attrs: ProductDynamicAttributes): string {
   const parts: string[] = [];
 
-  const cat = attrs.categoria || 'Produto';
+  const rawCat = attrs.categoria || 'Peça';
+  const cat = /^(geral|novidades|produto)$/i.test(rawCat) ? 'Peça' : rawCat;
   const sub = attrs.subcategoria ? ` (${attrs.subcategoria})` : '';
   const genero = attrs.genero ? ` ${attrs.genero}` : '';
   const cor = attrs.cor_principal ? ` cor ${attrs.cor_principal}` : '';
@@ -211,9 +212,9 @@ Retorne RIGOROSAMENTE no formato JSON:
           confidence: 0.95,
           detectedCategory: parsed.categoria || 'Geral',
           suggestedTitle: parsed.titulo_sugerido,
-          estimatedPriceCents: parsed.preco_estimado_reais
+          estimatedPriceCents: parsed.preco_estimado_reais && parsed.preco_estimado_reais > 0
             ? Math.round(parsed.preco_estimado_reais * 100)
-            : undefined,
+            : 0,
         };
       }
     } catch (err) {
@@ -232,19 +233,39 @@ function generateHeuristicAttributes(imageUrl: string, caption?: string): Vision
   const text = (caption || '').toLowerCase();
   const url = imageUrl.toLowerCase();
 
-  let categoria = 'novidades';
+  let categoria = 'geral';
   let subcategoria: string | undefined = undefined;
-  let cor_principal = 'preto';
+  let cor_principal: string | undefined = undefined;
   let gola: string | undefined = undefined;
   let manga: string | undefined = undefined;
-  let estampa = 'lisa';
+  let estampa: string | undefined = undefined;
   let modelagem: string | undefined = undefined;
-  let detalhes: string[] = ['peça exclusiva do story'];
+  let detalhes: string[] = [];
   let material: string | undefined = undefined;
   let genero: string | undefined = undefined;
   let estilo: string | undefined = undefined;
-  let suggestedTitle: string | undefined = caption ? caption.split('\n')[0].trim().slice(0, 50) : undefined;
-  let estimatedPriceCents: number = 14990;
+
+  let suggestedTitle: string | undefined = undefined;
+  if (caption) {
+    const firstLine = caption.split('\n')[0].replace(/[#@][\w.-]+/g, '').replace(/https?:\/\/\S+/g, '').trim();
+    if (firstLine.length >= 3 && firstLine.length <= 60) {
+      suggestedTitle = firstLine.charAt(0).toUpperCase() + firstLine.slice(1);
+    }
+  }
+
+  // Preço padrão: 0 (NUNCA inventar preço hardcoded como R$ 149,90)
+  // Só extrai valor se houver menção explícita na legenda/texto
+  let estimatedPriceCents = 0;
+  const priceRegex = /(?:r\$\s*|valor:?\s*|por\s*|apenas\s*)(\d+(?:[.,]\d{2})?)/i;
+  const priceRegex2 = /(\d+(?:[.,]\d{2})?)\s*(?:reais|no pix)/i;
+  const pMatch = (caption || '').match(priceRegex) || (caption || '').match(priceRegex2);
+  if (pMatch) {
+    const rawNum = pMatch[1].replace(',', '.');
+    const parsedNum = parseFloat(rawNum);
+    if (!isNaN(parsedNum) && parsedNum > 0) {
+      estimatedPriceCents = Math.round(parsedNum * 100);
+    }
+  }
 
   // 1. Detecção de Relógios / G-Shock / Casio / Smartwatches
   if (
@@ -275,7 +296,7 @@ function generateHeuristicAttributes(imageUrl: string, caption?: string): Vision
     genero = 'masculino';
     estilo = 'esportivo / tático militar';
     suggestedTitle = 'Relógio Casio G-Shock Protection All Black';
-    estimatedPriceCents = 38990; // R$ 389,90
+    estimatedPriceCents = estimatedPriceCents || 38990; // R$ 389,90
   }
   // 2. Detecção de Perfumaria / Cosméticos / Perfumes / O Boticário
   else if (

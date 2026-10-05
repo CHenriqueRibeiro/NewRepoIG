@@ -134,7 +134,28 @@ export class ProductIdentificationAgent implements ISpecializedAgent {
       };
     }
 
-    // 3. Monta link e detalhes do produto identificado
+    // 3. REGRA DO LOJISTA: Se a peça não tiver valor cadastrado (> 0), informa que em breve estará no catálogo
+    const hasPrice = Boolean(bestMatch.price && bestMatch.price > 0);
+    if (!hasPrice) {
+      const unpricedReply = isFirstContact
+        ? `${initialGreeting} Sou o assistente virtual da *${storeName}*${handleDisplay}! ✨\n\nEssa peça é uma novidade que acabou de chegar e ainda não está no catálogo com valor oficial, mas em breve vai ser colocada! ✨ Se você quiser, posso avisar você assim que o cadastro com o valor estiver concluído! 😊`
+        : `Essa peça é uma novidade que acabou de chegar e ainda não está no catálogo com valor oficial, mas em breve vai ser colocada! ✨ Se você quiser, posso avisar você assim que o cadastro com o valor estiver concluído! 😊`;
+
+      return {
+        agentType: this.type,
+        agentName: this.name,
+        shouldReply: true,
+        replyText: unpricedReply,
+        confidence: 1.0,
+        metadata: {
+          productName: bestMatch.name,
+          price: 0,
+          storyMatch,
+        },
+      };
+    }
+
+    // 4. Monta link e detalhes do produto com preço cadastrado
     const productLink = canShareCatalog
       ? buildProductCleanUrl(ctx.appUrl, ctx.catalogSlug, {
           id: bestMatch.id,
@@ -144,7 +165,7 @@ export class ProductIdentificationAgent implements ISpecializedAgent {
       : undefined;
 
     const isAvailable = bestMatch.stock > 0 || bestMatch.isInfiniteStock;
-    const priceFormatted = bestMatch.price ? `R$ ${bestMatch.price.toFixed(2)}` : 'Consulte no direct';
+    const priceFormatted = `R$ ${bestMatch.price.toFixed(2)}`;
     const stockNotice = isAvailable ? '✨ *Em estoque pronto para envio!*' : '⚠️ *Últimas unidades ou sob consulta.*';
 
     let sizeDetails = '';

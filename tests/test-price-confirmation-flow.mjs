@@ -23,8 +23,9 @@ test('Estratégia 3: Micro-Confirmação em 1 Clique e Aprendizado de Preço par
   const result = queryData.result;
 
   assert.equal(result.shouldReply, true);
-  // O texto NÃO deve inventar preço falso
+  // O texto NÃO deve inventar preço falso nem títulos como 'Novidades preto'
   assert.ok(!result.replyText.includes('149,90'), 'NUNCA deve inventar preço hardcoded como R$ 149,90');
+  assert.ok(!result.replyText.toLowerCase().includes('novidades preto'), 'NUNCA deve usar Novidades preto');
 
   // 2. Verificar a rota GET /api/catalog/price-confirm para listar requisições
   const listRes = await fetch(`${BASE_URL}/api/catalog/price-confirm`);

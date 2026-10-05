@@ -158,17 +158,29 @@ export async function processIncomingInstagramMedia(
     const isService = visionResult.detectedCategory === 'serviço' || visionResult.attributes.categoria === 'serviço';
     
     // Conforme regra definida pelo lojista: se for serviço não cria produto duplicado, mas para produtos físicos cria a ficha técnica completa!
-    const productTitle =
-      visionResult.suggestedTitle ||
-      (caption ? caption.split('\n')[0].trim().slice(0, 60) : '') ||
-      (visionResult.attributes.subcategoria
-        ? `${visionResult.attributes.categoria} ${visionResult.attributes.subcategoria}`
-        : `${visionResult.attributes.categoria} ${visionResult.attributes.cor_principal || ''}`
-      ).trim() ||
-      'Peça do Story';
+    let productTitle = visionResult.suggestedTitle;
+    if (!productTitle && caption) {
+      const cleanFirstLine = caption.split('\n')[0].replace(/[#@][\w.-]+/g, '').replace(/https?:\/\/\S+/g, '').trim();
+      if (cleanFirstLine.length >= 3 && cleanFirstLine.length <= 60) {
+        productTitle = cleanFirstLine;
+      }
+    }
+    if (!productTitle) {
+      const cat = (visionResult.detectedCategory || visionResult.attributes.categoria || '').trim().toLowerCase();
+      const isGenericCat = !cat || /^(novidades|geral|peça|produto)$/i.test(cat);
+      if (!isGenericCat) {
+        productTitle = visionResult.attributes.subcategoria
+          ? `${visionResult.detectedCategory || cat} ${visionResult.attributes.subcategoria}`
+          : `${visionResult.detectedCategory || cat} ${visionResult.attributes.cor_principal || ''}`.trim();
+      } else {
+        productTitle = 'Peça em Lançamento';
+      }
+    }
 
     const cleanTitle = productTitle.charAt(0).toUpperCase() + productTitle.slice(1);
-    const priceCents = visionResult.estimatedPriceCents || 0;
+    const priceCents = visionResult.estimatedPriceCents && visionResult.estimatedPriceCents > 0
+      ? visionResult.estimatedPriceCents
+      : 0;
 
     const newProductId = `prod_story_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
     const autoCreatedProduct: ProductEntity = {
@@ -185,8 +197,10 @@ export async function processIncomingInstagramMedia(
           ? 'Perfumaria'
           : visionResult.detectedCategory === 'relógio'
           ? 'Relógios'
-          : visionResult.detectedCategory || 'Novidades',
-      status: 'active',
+          : (visionResult.detectedCategory && !/^(novidades|geral)$/i.test(visionResult.detectedCategory))
+          ? visionResult.detectedCategory
+          : 'Lançamentos',
+      status: priceCents > 0 ? 'active' : 'inactive',
       image_url: visualAnalysisTargetUrl || mediaUrl,
       attributes: visionResult.attributes,
       variants: [
@@ -212,52 +226,75 @@ export async function processIncomingInstagramMedia(
     global.__intelligentProductsStore = global.__intelligentProductsStore || [];
     global.__intelligentProductsStore.unshift(autoCreatedProduct);
 
-    // 2. Cadastra na vitrine pública da loja (visível no catálogo e no ProductManager)
-    try {
-      const targetSlug = params.catalogSlug || 'minha-loja';
-      const activeCatalog = getServerCatalog(targetSlug);
-      if (activeCatalog) {
-        activeCatalog.slug = targetSlug;
-        const storeProd: ProductItem = {
-          id: autoCreatedProduct.id,
-          name: autoCreatedProduct.title,
-          description: autoCreatedProduct.description || '',
-          category: autoCreatedProduct.category || 'Novidades',
-          price: autoCreatedProduct.price_cents / 100,
-          stock: autoCreatedProduct.stock_quantity,
-          images: autoCreatedProduct.image_url ? [autoCreatedProduct.image_url] : [],
-          isUniquePiece: autoCreatedProduct.is_unique_piece,
-          badge: 'Recém Chegado do Story',
-          paymentBadge: 'PIX ou Cartão',
-          maxInstallments: 3,
-          installmentWithoutInterest: true,
-        };
-        activeCatalog.products = activeCatalog.products || [];
-        if (!activeCatalog.products.some((p) => p.id === storeProd.id)) {
-          activeCatalog.products.unshift(storeProd);
-          saveServerCatalog(activeCatalog);
-          console.log(`🛍️ [Auto-Cadastro Vitrine] Produto "${storeProd.name}" CADASTRADO com sucesso na vitrine da loja (${targetSlug})!`);
-        }
+    // 2. REGRA CRÍTICA DO LOJISTA:
+    // "quando subir um produto e nao tiver preço e para que diga que ainda nao esta no catalogo e que em breve vai ser colocado,
+    //  nao e para ir com valor e etc e muito menos com nome... so e para responder caso seja cadastrado o valor"
+    if (priceCents <= 0) {
+      try {
+        await intelligentCatalogService.createPriceConfirmationRequest({
+          storeId,
+          productId: autoCreatedProduct.id,
+          productTitle: autoCreatedProduct.title,
+          productImageUrl: autoCreatedProduct.image_url,
+          buyerUsername: 'Lojista',
+          buyerId: 'system_sync',
+          inquiryText: `Nova peça do Story/Post (${cleanTitle}) aguardando definição de valor.`,
+        });
+        console.log(`⏳ [Sync Pipeline] Produto "${cleanTitle}" cadastrado como 'inactive'. Aguardando definição de valor antes de publicar no catálogo.`);
+      } catch (reqErr) {
+        console.warn('[Sync Pipeline Price Request Warn]', reqErr);
+      }
+      decisionResult.matched_product = autoCreatedProduct;
+      decisionResult.match_status = 'suggested_new';
+      decisionResult.decision = 'no_match';
+    } else {
+      // 3. SÓ PUBLICA NA VITRINE SE TIVER VALOR CADASTRADO (> 0)
+      try {
+        const targetSlug = params.catalogSlug || 'minha-loja';
+        const activeCatalog = getServerCatalog(targetSlug);
+        if (activeCatalog) {
+          activeCatalog.slug = targetSlug;
+          const storeProd: ProductItem = {
+            id: autoCreatedProduct.id,
+            name: autoCreatedProduct.title,
+            description: autoCreatedProduct.description || '',
+            category: autoCreatedProduct.category || 'Lançamentos',
+            price: autoCreatedProduct.price_cents / 100,
+            stock: autoCreatedProduct.stock_quantity,
+            images: autoCreatedProduct.image_url ? [autoCreatedProduct.image_url] : [],
+            isUniquePiece: autoCreatedProduct.is_unique_piece,
+            badge: 'Recém Chegado do Story',
+            paymentBadge: 'PIX ou Cartão',
+            maxInstallments: 3,
+            installmentWithoutInterest: true,
+          };
+          activeCatalog.products = activeCatalog.products || [];
+          if (!activeCatalog.products.some((p) => p.id === storeProd.id)) {
+            activeCatalog.products.unshift(storeProd);
+            saveServerCatalog(activeCatalog);
+            console.log(`🛍️ [Auto-Cadastro Vitrine] Produto "${storeProd.name}" CADASTRADO com sucesso na vitrine da loja (${targetSlug})!`);
+          }
 
-        // Garante que também fique visível em 'minha-loja' caso targetSlug seja diferente
-        if (targetSlug !== 'minha-loja') {
-          const minhaLojaCatalog = getServerCatalog('minha-loja');
-          if (minhaLojaCatalog) {
-            minhaLojaCatalog.products = minhaLojaCatalog.products || [];
-            if (!minhaLojaCatalog.products.some((p) => p.id === storeProd.id)) {
-              minhaLojaCatalog.products.unshift(storeProd);
-              saveServerCatalog(minhaLojaCatalog);
+          // Garante que também fique visível em 'minha-loja' caso targetSlug seja diferente
+          if (targetSlug !== 'minha-loja') {
+            const minhaLojaCatalog = getServerCatalog('minha-loja');
+            if (minhaLojaCatalog) {
+              minhaLojaCatalog.products = minhaLojaCatalog.products || [];
+              if (!minhaLojaCatalog.products.some((p) => p.id === storeProd.id)) {
+                minhaLojaCatalog.products.unshift(storeProd);
+                saveServerCatalog(minhaLojaCatalog);
+              }
             }
           }
         }
+      } catch (e) {
+        console.warn('[Auto-Cadastro Vitrine Warn]', e);
       }
-    } catch (e) {
-      console.warn('[Auto-Cadastro Vitrine Warn]', e);
-    }
 
-    decisionResult.matched_product = autoCreatedProduct;
-    decisionResult.match_status = 'confirmed';
-    decisionResult.decision = 'strong_match';
+      decisionResult.matched_product = autoCreatedProduct;
+      decisionResult.match_status = 'confirmed';
+      decisionResult.decision = 'strong_match';
+    }
   }
 
   // 7. PERSISTÊNCIA DA MÍDIA E DA RELAÇÃO

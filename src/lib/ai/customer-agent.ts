@@ -328,6 +328,37 @@ export class CommercialSalesAgent {
     // 4. AÇÃO COMERCIAL QUANDO UM PRODUTO ALVO FOI IDENTIFICADO
     // =========================================================================
     if (targetProduct) {
+      const customerSalutation = isGenericUser ? 'Olá!' : `Olá, ${cleanUsername}!`;
+
+      // REGRA CRÍTICA DO LOJISTA:
+      // "quando subir um produto e nao tiver preço e para que diga que ainda nao esta no catalogo e que em breve vai ser colocado,
+      //  nao e para ir com valor e etc e muito menos com nome... so e para responder caso seja cadastrado o valor"
+      if (!targetProduct.price_cents || targetProduct.price_cents <= 0) {
+        await intelligentCatalogService.createPriceConfirmationRequest({
+          storeId,
+          productId: targetProduct.id,
+          productTitle: targetProduct.title,
+          productImageUrl: targetProduct.image_url,
+          buyerUsername: cleanUsername,
+          buyerId,
+          inquiryText: cleanText,
+        });
+
+        const unpricedReply = `${customerSalutation} Essa peça é uma novidade que acabou de chegar e ainda não está no catálogo com valor oficial, mas em breve vai ser colocada! ✨ Se você quiser, posso avisar você assim que o cadastro com o valor estiver concluído! 😊`;
+
+        return {
+          shouldReply: true,
+          intent: intentAnalysis.primaryIntent,
+          replyText: unpricedReply,
+          productId: targetProduct.id,
+          productTitle: targetProduct.title,
+          stockStatus: 'unknown',
+          processingSource,
+          cachedAvoidedAiExecution,
+          intentAnalysis,
+        };
+      }
+
       await intelligentCatalogService.updateConversationContext(
         storeId,
         buyerId,
@@ -354,8 +385,6 @@ export class CommercialSalesAgent {
         style: 'currency',
         currency: 'BRL',
       });
-
-      const customerSalutation = isGenericUser ? 'Olá!' : `Olá, ${cleanUsername}!`;
 
       let replyText = '';
 
