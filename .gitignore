@@ -1,0 +1,67 @@
+# ===================================================
+# VITRYNE - .gitignore Oficial de Produção
+# Proteção contra vazamento de credenciais e segredos
+# ===================================================
+
+# 1. Variáveis de Ambiente & Segredos (CRÍTICO: NUNCA SUBIR)
+.env
+.env.local
+.env.*.local
+.env.development
+.env.test
+.env.production
+.env.staging
+
+# 2. Certificados SSL & Chaves Privadas Locais
+/certificates/
+*.pem
+*.key
+*.crt
+*.cert
+*.pfx
+*.p12
+
+# 3. Binários & Executáveis Locais
+*.exe
+ngrok.exe
+cloudflared.exe
+
+# 4. Dependências
+/node_modules/
+/.pnp
+.pnp.js
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# 5. Build, Cache e Next.js
+/.next/
+/out/
+/build/
+/dist/
+.turbo/
+tsconfig.tsbuildinfo
+
+# 6. Scripts temporários e Scratch
+check_db.mjs
+/scratch/
+*.tmp
+*.bak
+
+# 7. Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 8. Sistema Operacional & IDEs
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*.swo
