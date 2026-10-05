@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { jevAgentOrchestrator } from '@/lib/ai/orchestrator-router';
 import { getServerCatalog, resolveActiveStoreIdentity } from '@/lib/catalog/storage';
 import { getPublicAppUrl } from '@/lib/catalog/url-helpers';
-import { getActiveInstagramSession } from '@/lib/instagram/auth';
+import { getActiveInstagramSession, getValidAccessToken } from '@/lib/instagram/auth';
+import { instagramClient } from '@/lib/instagram/client';
 import { isTypeSafeConfigured, getTypeSafeApiKey } from '@/lib/ai/typesafe-jev-client';
 
 /**
@@ -29,18 +30,28 @@ export async function POST(request: NextRequest) {
     }
 
     const session = getActiveInstagramSession();
+    const token = getValidAccessToken();
+    const storeProfile = await instagramClient.getStoreProfile(token);
+    const instagramName = storeProfile?.name || session?.account?.name;
+    const instagramHandle = storeProfile?.username || session?.account?.username || 'app_quota';
+
     const activeStore = resolveActiveStoreIdentity(session?.account);
     const activeCatalog = getServerCatalog(catalogSlug || activeStore.slug);
 
-    const resolvedStoreName = storeName || activeCatalog.storeName || activeStore.storeName || 'Vitryne Boutique';
+    const resolvedStoreName = (storeName && storeName !== 'Minha Loja')
+      ? storeName
+      : ((instagramName && instagramName !== 'Minha Loja')
+        ? instagramName
+        : (activeCatalog.storeName && activeCatalog.storeName !== 'Minha Loja' ? activeCatalog.storeName : 'Quota'));
     const resolvedSlug = catalogSlug || activeCatalog.slug || activeStore.slug || 'minha-loja';
-    const resolvedStoreId = storeId || activeStore.storeId || 'store_default';
+    const resolvedStoreId = storeId || storeProfile?.id || activeStore.storeId || 'store_default';
     const publicAppUrl = getPublicAppUrl();
 
     const orchestration = await jevAgentOrchestrator.routeAndExecute(
       {
         storeId: resolvedStoreId,
         storeName: resolvedStoreName,
+        storeHandle: instagramHandle,
         catalogSlug: resolvedSlug,
         buyerId,
         buyerUsername,

@@ -54,7 +54,7 @@ export async function ensureStoreInSupabase(account: {
   const client = getServerSupabase();
   const rawId = account.id || 'ig_default_account';
   const cleanUsername = account.username?.replace(/^@/, '') || 'instagram';
-  const storeName = account.name || cleanUsername || 'Minha Loja';
+  const storeName = account.name || cleanUsername || 'Quota';
 
   try {
     const { data: existing } = await client

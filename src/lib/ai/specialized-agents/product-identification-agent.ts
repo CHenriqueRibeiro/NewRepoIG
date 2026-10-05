@@ -70,6 +70,7 @@ export class ProductIdentificationAgent implements ISpecializedAgent {
     const isFirstContact = ctx.isFirstContact !== false;
     const firstName = getFriendlyFirstName(ctx.buyerUsername);
     const initialGreeting = firstName ? `Oie, ${firstName}!` : 'Oie!';
+    const handleDisplay = ctx.storeHandle ? ` (@${ctx.storeHandle.replace(/^@+/, '')})` : '';
 
     const rawText = (ctx.messageText || '').trim();
 
@@ -102,8 +103,8 @@ export class ProductIdentificationAgent implements ISpecializedAgent {
         // O cliente especificou um produto, mas a loja não possui no catálogo ou estoque
         if (isFirstContact) {
           reply = canShareCatalog && catalogUrl
-            ? `${initialGreeting} Que ótimo ter você por aqui na *${storeName}*! ✨\n\nNo momento não temos **${extractedSubject}** em nosso estoque pronta-entrega. Mas temos outras peças lindas disponíveis na nossa vitrine oficial:\n👉 ${catalogUrl}\n\nSe você viu alguma foto específica nos nossos posts ou stories, pode me mandar o print por aqui!`
-            : `${initialGreeting} Que ótimo ter você por aqui na *${storeName}*! ✨\n\nNo momento não temos **${extractedSubject}** em nosso estoque pronta-entrega. Se você tiver alguma foto ou print de uma peça que viu nos nossos posts ou stories, pode me mandar aqui que já verifico com a equipe para você!`;
+            ? `${initialGreeting} Sou o assistente virtual da *${storeName}*${handleDisplay}! ✨\n\nNo momento não temos **${extractedSubject}** em nosso estoque pronta-entrega. Mas temos outras peças lindas disponíveis na nossa vitrine oficial:\n👉 ${catalogUrl}\n\nSe você viu alguma foto específica nos nossos posts ou stories, pode me mandar o print por aqui!`
+            : `${initialGreeting} Sou o assistente virtual da *${storeName}*${handleDisplay}! ✨\n\nNo momento não temos **${extractedSubject}** em nosso estoque pronta-entrega. Se você tiver alguma foto ou print de uma peça que viu nos nossos posts ou stories, pode me mandar aqui que já verifico com a equipe para você!`;
         } else {
           // Conversa em andamento: resposta direta e natural
           reply = canShareCatalog && catalogUrl
@@ -114,8 +115,8 @@ export class ProductIdentificationAgent implements ISpecializedAgent {
         // O cliente não especificou nenhum modelo ainda (exploração inicial)
         if (isFirstContact) {
           reply = canShareCatalog && catalogUrl
-            ? `${initialGreeting} Temos diversas opções maravilhosas disponíveis na *${storeName}*! ✨\n\nVocê pode conferir todas as nossas peças com fotos, tamanhos e valores atualizados no nosso catálogo oficial:\n👉 ${catalogUrl}\n\nQual modelo ou estilo você está procurando? Me conta aqui que te ajudo a achar! 🛍️`
-            : `${initialGreeting} Que ótimo ter você por aqui na *${storeName}*! ✨\n\nQual modelo, look ou peça você está procurando? Pode me mandar o print aqui do post ou story que eu já vejo a disponibilidade e te passo os detalhes certinho! 🛍️`;
+            ? `${initialGreeting} Sou o assistente virtual da *${storeName}*${handleDisplay}! ✨ Temos diversas opções maravilhosas disponíveis!\n\nVocê pode conferir todas as nossas peças com fotos, tamanhos e valores atualizados no nosso catálogo oficial:\n👉 ${catalogUrl}\n\nQual modelo ou estilo você está procurando? Me conta aqui que te ajudo a achar! 🛍️`
+            : `${initialGreeting} Sou o assistente virtual da *${storeName}*${handleDisplay}! ✨\n\nQual modelo, look ou peça você está procurando? Pode me mandar o print aqui do post ou story que eu já vejo a disponibilidade e te passo os detalhes certinho! 🛍️`;
         } else {
           // Conversa em andamento: pergunta de forma natural sem repetir a saudação inicial
           reply = canShareCatalog && catalogUrl
@@ -159,7 +160,7 @@ export class ProductIdentificationAgent implements ISpecializedAgent {
       : `\n\nDeseja que eu reserve uma unidade para você? Basta me confirmar seu tamanho e endereço por aqui! 🛍️`;
 
     const replyText = isFirstContact
-      ? `${initialGreeting} Temos sim o *${bestMatch.name}*! ${stockNotice}\n\n💰 *Valor:* ${priceFormatted}${sizeDetails}${linkSection}`
+      ? `${initialGreeting} Sou o assistente virtual da *${storeName}*${handleDisplay}! Temos sim o *${bestMatch.name}*! ${stockNotice}\n\n💰 *Valor:* ${priceFormatted}${sizeDetails}${linkSection}`
       : `Temos sim o *${bestMatch.name}*! ${stockNotice}\n\n💰 *Valor:* ${priceFormatted}${sizeDetails}${linkSection}`;
 
     return {

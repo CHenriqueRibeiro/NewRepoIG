@@ -133,16 +133,22 @@ async function handleCommentChange(value: any) {
 
   // 3. Identidade da Loja e Conexão Instagram
   const token = getValidAccessToken();
+  const storeProfile = await instagramClient.getStoreProfile(token);
+  const instagramName = storeProfile?.name || session?.account?.name;
+  const instagramHandle = storeProfile?.username || session?.account?.username || 'app_quota';
+
   const activeStore = resolveActiveStoreIdentity(session?.account);
   const activeCatalog = getServerCatalog(activeStore.slug);
   const canShareCatalog = isCatalogPublishable(activeCatalog);
-  const storeName = activeCatalog.storeName || activeStore.storeName || session?.account?.name || 'Minha Loja';
+  const storeName = (instagramName && instagramName !== 'Minha Loja')
+    ? instagramName
+    : (activeCatalog.storeName && activeCatalog.storeName !== 'Minha Loja' ? activeCatalog.storeName : 'Quota');
   const resolvedSlug = activeCatalog.slug || activeStore.slug;
-  const resolvedStoreId = activeStore.storeId;
+  const resolvedStoreId = storeProfile?.id || activeStore.storeId;
   const publicUrl = getPublicAppUrl();
   const generalCatalogLink = canShareCatalog ? `${publicUrl}/${resolvedSlug}` : undefined;
 
-  console.log(`🏪 Loja: ${storeName} (@${session?.account?.username || 'instagram'})`);
+  console.log(`🏪 Loja: ${storeName} (@${instagramHandle})`);
   console.log(`🔑 Token presente: ${token ? 'SIM (válido)' : 'NÃO (ausente)'}`);
   console.log(`📦 Catálogo Aprovado/Publicável: ${canShareCatalog ? 'SIM (link ativo)' : 'NÃO (sem link público)'}`);
 
@@ -363,18 +369,23 @@ async function handleMessagingEvent(msgEvent: any) {
   const session = getActiveInstagramSession();
   const token = getValidAccessToken();
 
+  // Busca perfil oficial da loja na Meta (/me)
+  const storeProfile = await instagramClient.getStoreProfile(token);
+  const instagramName = storeProfile?.name || session?.account?.name;
+  const instagramHandle = storeProfile?.username || session?.account?.username || 'app_quota';
+
   // Busca perfil real do cliente na Meta (Nome oficial e @username)
   const clientProfile = await instagramClient.getUserProfile(senderId, token);
   const buyerHandle = clientProfile?.username ? `@${clientProfile.username.replace(/^@+/, '')}` : `@${senderId}`;
   const buyerDisplayName = clientProfile?.name || clientProfile?.username?.replace(/^@+/, '') || 'Cliente';
-  console.log(`👤 Cliente Identificado na Meta: ${buyerDisplayName} (${buyerHandle})`);
+  console.log(`👤 Cliente Identificado na Meta: ${buyerDisplayName} (${buyerHandle}) | Loja: ${instagramName} (@${instagramHandle})`);
 
   // 1. Canal: Reações a Stories (Emoji: 🔥, ❤️, etc.)
   if (reaction && reaction.action === 'react') {
     const emoji = reaction.emoji || '❤️';
     console.log(`❤️ [Worker Story Reaction] De: ${buyerHandle} | Emoji: ${emoji}`);
 
-    const welcomeMsg = `Oie, ${buyerDisplayName}! Ficamos muito felizes que você curtiu esse look no Story! ✨ Deseja saber os tamanhos disponíveis ou valores com frete para sua região?`;
+    const welcomeMsg = `Oie, ${buyerDisplayName}! Ficamos muito felizes que você curtiu esse look no Story da *${instagramName || 'loja'}*! ✨ Deseja saber os tamanhos disponíveis ou valores com frete para sua região?`;
     console.log(`📤 [Worker Direct] Enviando resposta a reação de Story para ${buyerHandle}...`);
     const dmRes = await instagramClient.sendDirectMessage({
       recipientId: senderId,
@@ -397,14 +408,17 @@ async function handleMessagingEvent(msgEvent: any) {
 
     const activeStore = resolveActiveStoreIdentity(session?.account);
     const activeCatalog = getServerCatalog(activeStore.slug);
-    const resolvedStoreName = activeCatalog.storeName || activeStore.storeName;
+    const resolvedStoreName = (instagramName && instagramName !== 'Minha Loja')
+      ? instagramName
+      : (activeCatalog.storeName && activeCatalog.storeName !== 'Minha Loja' ? activeCatalog.storeName : 'Quota');
     const resolvedSlug = activeCatalog.slug || activeStore.slug;
-    const resolvedStoreId = activeStore.storeId;
+    const resolvedStoreId = storeProfile?.id || activeStore.storeId;
     const publicUrl = getPublicAppUrl();
 
     const customerRes = await processCustomerMessage({
       storeId: resolvedStoreId,
       storeName: resolvedStoreName,
+      storeHandle: instagramHandle,
       catalogSlug: resolvedSlug,
       buyerId: senderId,
       buyerUsername: buyerDisplayName,
@@ -487,14 +501,17 @@ async function handleMessagingEvent(msgEvent: any) {
 
     const activeStore = resolveActiveStoreIdentity(session?.account);
     const activeCatalog = getServerCatalog(activeStore.slug);
-    const resolvedStoreName = activeCatalog.storeName || activeStore.storeName;
+    const resolvedStoreName = (instagramName && instagramName !== 'Minha Loja')
+      ? instagramName
+      : (activeCatalog.storeName && activeCatalog.storeName !== 'Minha Loja' ? activeCatalog.storeName : 'Quota');
     const resolvedSlug = activeCatalog.slug || activeStore.slug;
-    const resolvedStoreId = activeStore.storeId;
+    const resolvedStoreId = storeProfile?.id || activeStore.storeId;
     const publicUrl = getPublicAppUrl();
 
     const orchestration = await jevAgentOrchestrator.routeAndExecute({
       storeId: resolvedStoreId,
       storeName: resolvedStoreName,
+      storeHandle: instagramHandle,
       catalogSlug: resolvedSlug,
       buyerId: senderId,
       buyerUsername: buyerDisplayName,

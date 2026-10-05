@@ -67,8 +67,8 @@ export async function POST(request: NextRequest) {
       const target = global.__simulatedAuditLog.find((i) => i.status === 'aguardando' || i.status === 'no_vacuo');
       if (target) {
         const session = getActiveInstagramSession();
-        const storeName = session?.account?.name || 'Minha Loja';
-        const username = session?.account?.username || 'instagram';
+        const storeName = (session?.account?.name && session.account.name !== 'Minha Loja') ? session.account.name : (process.env.INSTAGRAM_ACCOUNT_NAME || 'Quota');
+        const username = session?.account?.username || 'app_quota';
 
         const aiResponse = await processCustomerInteractionWithAI({
           rawComment: target.comment,

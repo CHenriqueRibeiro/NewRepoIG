@@ -10,6 +10,7 @@ import type { CustomerIntentAnalysis } from './intent-discovery-agent';
 export interface CustomerInquiryInput {
   storeId: string;
   storeName?: string;
+  storeHandle?: string;
   catalogSlug?: string;
   buyerId: string;
   buyerUsername?: string;
@@ -163,7 +164,8 @@ export class CommercialSalesAgent {
     const { input, intentAnalysis } = params;
     const {
       storeId,
-      storeName = 'Vitryne',
+      storeName = 'Quota',
+      storeHandle,
       catalogSlug = 'minha-loja',
       buyerId,
       buyerUsername = 'cliente',
@@ -446,9 +448,11 @@ export class CommercialSalesAgent {
           ? `${nameSalutation}! Estou por aqui para te atender com o maior prazer. ✨\n\nMe conta: o que você gostaria de ver hoje? Pode me mandar o que procura ou dar uma olhada em todas as novidades na nossa vitrine:\n${generalCatalogLink}`
           : `${nameSalutation}! Estou por aqui para te atender com o maior prazer. ✨\n\nMe conta: o que você gostaria de ver hoje? Pode me mandar o modelo que procura ou o print de algo que viu nos nossos posts/stories que eu já vejo a disponibilidade pra você!`;
       } else if (lowerClean.includes('como funciona') || lowerClean.includes('como é') || lowerClean.includes('como e')) {
-        greetingReply = `${nameSalutation}! Tudo bem? Seja muito bem-vinda(o) à ${storeName}! ✨\n\nNosso atendimento por aqui é super prático e humanizado: você pode me contar qual produto, serviço ou informação procura, ou me mandar o print de algo que viu nos nossos posts/stories que eu verifico opções, valores e disponibilidade pra você na hora!\n\nComo posso te ajudar hoje?`;
+        const handleDisplay = storeHandle ? ` (@${storeHandle.replace(/^@+/, '')})` : '';
+        greetingReply = `${nameSalutation}! Tudo bem? Sou o assistente virtual da *${storeName}*${handleDisplay}! ✨\n\nNosso atendimento por aqui é super prático e humanizado: você pode me contar qual produto, serviço ou informação procura, ou me mandar o print de algo que viu nos nossos posts/stories que eu verifico opções, valores e disponibilidade pra você na hora!\n\nComo posso te ajudar hoje?`;
       } else {
-        greetingReply = `${nameSalutation}! Tudo bem? Seja muito bem-vinda(o) à ${storeName}! ✨\n\nComo posso te ajudar hoje? Você procura algum produto ou serviço específico, ou gostaria de mais informações?`;
+        const handleDisplay = storeHandle ? ` (@${storeHandle.replace(/^@+/, '')})` : '';
+        greetingReply = `${nameSalutation}! Tudo bem? Sou o assistente virtual da *${storeName}*${handleDisplay}! ✨\n\nComo posso te ajudar hoje? Você procura algum produto ou serviço específico, ou gostaria de mais informações?`;
       }
 
       await intelligentCatalogService.updateConversationContext(

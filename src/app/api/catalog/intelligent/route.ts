@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
       global.__vitryneCatalogStore['minha-loja'] = {
         ...(global.__vitryneCatalogStore['minha-loja'] || {}),
         slug: 'minha-loja',
-        storeName: 'Minha Loja',
+        storeName: process.env.INSTAGRAM_ACCOUNT_NAME || 'Quota',
         templateChosen: true,
         isPublished: true,
         products: [

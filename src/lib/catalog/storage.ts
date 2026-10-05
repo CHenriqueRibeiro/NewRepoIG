@@ -61,7 +61,7 @@ if (!global.__vitryneCatalogUserCustomized!.has('minha-loja')) {
   global.__vitryneCatalogStore!['minha-loja'] = {
     ...defaultCat,
     slug: 'minha-loja',
-    storeName: 'Minha Loja',
+    storeName: process.env.INSTAGRAM_ACCOUNT_NAME || 'Quota',
     products: [],
   };
 }
@@ -125,14 +125,14 @@ export function resolveActiveStoreIdentity(sessionAccount?: {
     global.__vitryneCatalogStore![uniqueSlug] = {
       ...getDefaultCatalog(),
       slug: uniqueSlug,
-      storeName: sessionAccount?.name || 'Minha Loja',
+      storeName: sessionAccount?.name || process.env.INSTAGRAM_ACCOUNT_NAME || 'Quota',
       products: [],
     };
   }
 
   return {
     storeId: rawId,
-    storeName: sessionAccount?.name || 'Minha Loja',
+    storeName: sessionAccount?.name || process.env.INSTAGRAM_ACCOUNT_NAME || 'Quota',
     slug: uniqueSlug,
   };
 }
@@ -166,7 +166,7 @@ export function getServerCatalog(slug?: string): CatalogConfig {
               .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
               .join(' ')
           : cleanSlug === 'minha-loja'
-          ? 'Minha Loja'
+          ? (process.env.INSTAGRAM_ACCOUNT_NAME || 'Quota')
           : cleanSlug.charAt(0).toUpperCase() + cleanSlug.slice(1);
 
       result = {
@@ -216,7 +216,7 @@ export function clearServerCatalogStore(): void {
   global.__vitryneCatalogStore['minha-loja'] = {
     ...getDefaultCatalog(),
     slug: 'minha-loja',
-    storeName: 'Minha Loja',
+    storeName: process.env.INSTAGRAM_ACCOUNT_NAME || 'Quota',
     products: [],
   };
 }

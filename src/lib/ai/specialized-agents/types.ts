@@ -7,6 +7,7 @@ import type { ProductEntity } from '../../catalog/intelligent-types.ts';
 export interface SpecializedAgentContext {
   storeId: string;
   storeName: string;
+  storeHandle?: string;
   catalogSlug: string;
   buyerUsername: string;
   buyerId?: string;

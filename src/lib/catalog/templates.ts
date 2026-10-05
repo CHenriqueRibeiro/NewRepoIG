@@ -1449,7 +1449,7 @@ export function getTemplateById(idOrSlug: string): CatalogTemplate | undefined {
 
 export function getDefaultCatalog(): CatalogConfig {
   const defaultCat: CatalogConfig = {
-    storeName: 'Minha Loja',
+    storeName: process.env.INSTAGRAM_ACCOUNT_NAME || 'Quota',
     slug: 'minha-loja',
     bio: 'Catálogo oficial da loja. Escolha seus produtos e finalize pelo WhatsApp ou Direct.',
     heroTagline: 'CATÁLOGO OFICIAL',

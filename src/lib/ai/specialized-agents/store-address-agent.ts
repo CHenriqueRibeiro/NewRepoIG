@@ -22,9 +22,10 @@ export class StoreAddressAgent implements ISpecializedAgent {
     const isFirstContact = ctx.isFirstContact !== false;
     const firstName = getFriendlyFirstName(ctx.buyerUsername);
     const initialGreeting = firstName ? `Olá, ${firstName}!` : 'Olá!';
+    const handleDisplay = ctx.storeHandle ? ` (@${ctx.storeHandle.replace(/^@+/, '')})` : '';
 
     let replyText = isFirstContact
-      ? `${initialGreeting} Seguem as informações do nosso espaço:\n\n📍 *Endereço:* ${location}\n🕒 *Horário de Atendimento:* ${hours}\n\n`
+      ? `${initialGreeting} Sou o assistente virtual da *${storeName}*${handleDisplay}! Seguem as informações do nosso espaço:\n\n📍 *Endereço:* ${location}\n🕒 *Horário de Atendimento:* ${hours}\n\n`
       : `Seguem as informações de endereço e retirada do nosso espaço:\n\n📍 *Endereço:* ${location}\n🕒 *Horário de Atendimento:* ${hours}\n\n`;
 
     if (catalog.shipping?.pickupEnabled) {

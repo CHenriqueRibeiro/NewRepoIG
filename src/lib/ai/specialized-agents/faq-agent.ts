@@ -67,10 +67,11 @@ export class FaqAgent implements ISpecializedAgent {
       };
     }
 
-    // 4. Primeiro contato / Boas-vindas
+    // 4. Primeiro contato / Boas-vindas (Apresentação oficial com o nome do perfil do Instagram)
     if (isFirstContact) {
       const greeting = firstName ? `Olá, ${firstName}!` : 'Olá!';
-      let reply = `${greeting} Tudo bem por aí? É um prazer atender você na *${storeName}*! ✨\n\nNós trabalhamos com envio para todo o Brasil e retirada no local.`;
+      const handleDisplay = ctx.storeHandle ? ` (@${ctx.storeHandle.replace(/^@+/, '')})` : '';
+      let reply = `${greeting} Tudo bem por aí? Sou o assistente virtual da *${storeName}*${handleDisplay}! ✨ É um prazer atender você!\n\nNós trabalhamos com envio para todo o Brasil e retirada no local.`;
       if (canShareCatalog && catalogUrl) {
         reply += ` Você pode ver todas as nossas peças disponíveis com fotos, tamanhos e valores na nossa vitrine:\n👉 ${catalogUrl}\n\nSe tiver qualquer dúvida ou quiser ajuda para escolher seu look, estou à disposição!`;
       } else {
@@ -93,7 +94,7 @@ export class FaqAgent implements ISpecializedAgent {
         agentType: this.type,
         agentName: this.name,
         shouldReply: true,
-        replyText: `Oi de novo! ✨ Como posso te ajudar agora? Procura alguma peça ou gostaria de tirar alguma dúvida?`,
+        replyText: `Oi de novo! ✨ Aqui é da equipe da *${storeName}*. Como posso te ajudar agora? Procura alguma peça ou gostaria de tirar alguma dúvida?`,
         confidence: 0.95,
       };
     }

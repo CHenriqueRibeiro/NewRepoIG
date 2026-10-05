@@ -65,6 +65,40 @@ export class InstagramClient {
   }
 
   /**
+   * Obtém os dados oficiais do perfil da própria loja conectada no Instagram (/me)
+   */
+  async getStoreProfile(accessToken?: string): Promise<{ id: string; username: string; name: string } | null> {
+    if (!accessToken || accessToken.includes('mock')) return null;
+
+    if ((global as any).__igStoreProfileCache) {
+      return (global as any).__igStoreProfileCache;
+    }
+
+    try {
+      const isInstagramToken = accessToken.startsWith('IGAA');
+      const baseUrl = isInstagramToken ? this.instagramGraphUrl : this.facebookGraphUrl;
+      const res = await fetch(
+        `${baseUrl}/me?fields=id,username,name,account_type&access_token=${encodeURIComponent(accessToken)}`
+      );
+
+      if (res.ok) {
+        const data = await res.json();
+        const profile = {
+          id: data.id,
+          username: data.username ? data.username.replace(/^@+/, '') : 'app_quota',
+          name: data.name || data.username || 'Quota',
+        };
+        (global as any).__igStoreProfileCache = profile;
+        return profile;
+      }
+    } catch (e: any) {
+      console.warn('[Store Profile Fetch Warn]:', e.message);
+    }
+
+    return null;
+  }
+
+  /**
    * Obtém detalhes da publicação/Reels (legenda, link e mídias) via Meta Graph API
    */
   async getMediaDetails(

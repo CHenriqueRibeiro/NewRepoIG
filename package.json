@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "node --test --experimental-strip-types tests/crypto.test.mjs tests/test-intelligent-catalog.mjs tests/test-routes.mjs tests/test-simulator-flow.mjs tests/test-shipping-cutoff-uber.mjs tests/test-sales-intent.mjs tests/test-store-identity-and-clean-catalog.mjs tests/test-conversational-greeting.mjs tests/test-price-confirmation-flow.mjs tests/test-multiturn-dialogue.mjs tests/test-pix-payment.mjs tests/test-typesafe-jev-orchestrator.mjs"
+    "test": "node --test --experimental-strip-types tests/crypto.test.mjs tests/test-intelligent-catalog.mjs tests/test-routes.mjs tests/test-simulator-flow.mjs tests/test-shipping-cutoff-uber.mjs tests/test-sales-intent.mjs tests/test-store-identity-and-clean-catalog.mjs tests/test-conversational-greeting.mjs tests/test-price-confirmation-flow.mjs tests/test-multiturn-dialogue.mjs tests/test-pix-payment.mjs tests/test-typesafe-jev-orchestrator.mjs tests/test-official-instagram-identity.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
