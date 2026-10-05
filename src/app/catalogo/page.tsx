@@ -26,7 +26,6 @@ import {
   Clock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import PriceConfirmationBanner from '@/components/dashboard/PriceConfirmationBanner';
 import IntelligentCatalogAutomator from '@/components/dashboard/IntelligentCatalogAutomator';
 
 type ActiveTab = 'templates' | 'products' | 'theme' | 'discounts' | 'share';
@@ -320,10 +319,7 @@ export default function CatalogBuilderPage() {
 
           {activeTab === 'products' && (
             <div className="space-y-6">
-              {/* Confirmação de Preços de Stories Recentes */}
-              <PriceConfirmationBanner />
-
-              {/* Sincronização Inteligente do Catálogo com Mídias do Instagram */}
+              {/* Sincronização Inteligente do Catálogo & Central de Pendências */}
               <IntelligentCatalogAutomator />
 
               <ProductManager
