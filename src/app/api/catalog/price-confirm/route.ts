@@ -102,3 +102,31 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const requestId = searchParams.get('requestId');
+
+    if (requestId === 'ALL' || !requestId) {
+      global.__intelligentPriceRequestsStore = [];
+      return NextResponse.json({
+        success: true,
+        message: 'Todas as pendências de preço foram descartadas.',
+      });
+    }
+
+    if (global.__intelligentPriceRequestsStore) {
+      global.__intelligentPriceRequestsStore = global.__intelligentPriceRequestsStore.filter(
+        (r) => r.id !== requestId
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Pendência descartada com sucesso.',
+    });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}

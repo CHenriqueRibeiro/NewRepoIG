@@ -93,6 +93,7 @@ export default function IntelligentCatalogAutomator() {
   // Controle do modal focado exclusivamente em Pendências
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [dismissingId, setDismissingId] = useState<string | null>(null);
+  const [isDismissingAll, setIsDismissingAll] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const fetchData = async () => {
@@ -230,14 +231,50 @@ export default function IntelligentCatalogAutomator() {
   const handleDismissPriceRequest = async (reqId: string) => {
     try {
       setDismissingId(reqId);
-      // Remove da lista local e atualiza estado
+      // Remove da lista local e dispara exclusão no servidor
       setPendingPrices((prev) => prev.filter((r) => r.id !== reqId));
+      await fetch(`/api/catalog/price-confirm?requestId=${reqId}`, { method: 'DELETE' }).catch(() => {});
       setToastMessage('Publicação descartada (não cadastrada no catálogo).');
       setTimeout(() => setToastMessage(null), 4000);
     } catch (e) {
       console.error('Erro ao descartar pendência:', e);
     } finally {
       setDismissingId(null);
+    }
+  };
+
+  const handleDismissAll = async () => {
+    if (!confirm('Deseja realmente descartar todas as pendências da loja? Essas publicações não serão cadastradas no catálogo.')) {
+      return;
+    }
+
+    setIsDismissingAll(true);
+    try {
+      setPendingPrices([]);
+      setRelations((prev) =>
+        prev.map((r) =>
+          r.match_status === 'pending_confirmation' || r.match_status === 'suggested_new'
+            ? { ...r, match_status: 'rejected' }
+            : r
+        )
+      );
+
+      await Promise.all([
+        fetch('/api/catalog/price-confirm?requestId=ALL', { method: 'DELETE' }).catch(() => {}),
+        fetch('/api/catalog/intelligent/dismiss', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ relationId: 'ALL' }),
+        }).catch(() => {}),
+      ]);
+
+      setToastMessage('Todas as pendências foram descartadas com sucesso!');
+      setTimeout(() => setToastMessage(null), 4000);
+      await fetchData();
+    } catch (e) {
+      console.error('Erro ao descartar todas as pendências:', e);
+    } finally {
+      setIsDismissingAll(false);
     }
   };
 
@@ -424,14 +461,20 @@ export default function IntelligentCatalogAutomator() {
                   {/* 1. Preços e Cadastro Completo de Peças de Stories */}
                   {pendingPrices.length > 0 && (
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
                         <h4 className="font-bold text-xs sm:text-sm text-slate-900 flex items-center gap-2">
                           <span className="flex h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse" />
                           <span>Peças Solicitadas por Clientes nos Stories ({pendingPrices.length})</span>
                         </h4>
-                        <span className="text-[11px] text-slate-500 hidden sm:inline">
-                          A foto já vem preenchida • Defina o nome, valor, estoque e descrição
-                        </span>
+                        <button
+                          type="button"
+                          onClick={handleDismissAll}
+                          disabled={isDismissingAll}
+                          className="text-xs text-rose-600 hover:text-rose-700 hover:underline flex items-center gap-1.5 font-semibold py-1 px-2 rounded-lg hover:bg-rose-50 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                          <span>{isDismissingAll ? 'Descartando...' : `Descartar Todos (${totalPendencias})`}</span>
+                        </button>
                       </div>
 
                       <div className="space-y-4">
@@ -720,11 +763,19 @@ export default function IntelligentCatalogAutomator() {
 
             {/* Modal Footer */}
             <div className="px-5 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between shrink-0">
-              <span className="text-xs text-slate-500">
-                {totalPendencias > 0
-                  ? `${totalPendencias} pendência(s) aguardando você.`
-                  : 'Nenhuma pendência pendente.'}
-              </span>
+              {totalPendencias > 0 ? (
+                <button
+                  type="button"
+                  onClick={handleDismissAll}
+                  disabled={isDismissingAll}
+                  className="text-xs font-semibold text-rose-600 hover:text-rose-800 transition-colors flex items-center gap-1.5 py-1 px-2 rounded-md hover:bg-rose-50"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{isDismissingAll ? 'Descartando...' : 'Descartar Todas as Pendências'}</span>
+                </button>
+              ) : (
+                <span className="text-xs text-slate-500">Nenhuma pendência pendente.</span>
+              )}
               <Button
                 size="sm"
                 variant="outline"
