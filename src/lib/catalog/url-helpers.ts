@@ -9,14 +9,20 @@ declare global {
 }
 
 export function getPublicAppUrl(): string {
-  if (global.__publicBaseUrl && !global.__publicBaseUrl.includes('localhost') && !global.__publicBaseUrl.includes('127.0.0.1')) {
+  if (global.__publicBaseUrl && !global.__publicBaseUrl.includes('localhost') && !global.__publicBaseUrl.includes('127.0.0.1') && !global.__publicBaseUrl.includes('trycloudflare.com') && !global.__publicBaseUrl.includes('ngrok-free.app')) {
     return global.__publicBaseUrl;
   }
-  const envUrl = process.env.NEXT_PUBLIC_APP_URL;
-  if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
-    return envUrl;
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`.replace(/\/$/, '');
   }
-  return global.__publicBaseUrl || envUrl || 'http://localhost:3000';
+  const envUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1') && !envUrl.includes('trycloudflare.com') && !envUrl.includes('ngrok-free.app')) {
+    return envUrl.replace(/\/$/, '');
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`.replace(/\/$/, '');
+  }
+  return 'http://localhost:3000';
 }
 
 export function setPublicAppUrl(url: string) {

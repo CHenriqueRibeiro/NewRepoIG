@@ -67,34 +67,37 @@ const GRAPH_API_URL = `https://graph.facebook.com/${GRAPH_API_VERSION}`;
  * 3. Se estiver em requisição local ou preview, utiliza a origem da requisição atual
  */
 export function getAppBaseUrl(request?: { url: string; headers: { get(name: string): string | null } }): string {
+  // 1. Domínio de Produção Oficial na Vercel (sempre permanente)
   if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
     return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`.replace(/\/$/, '');
   }
 
-  const envUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
-  if (envUrl && !envUrl.includes('trycloudflare.com') && !envUrl.includes('ngrok-free.app')) {
-    return envUrl.replace(/\/$/, '');
-  }
-
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`.replace(/\/$/, '');
-  }
-
+  // 2. Se a requisição veio do navegador (ex: http://localhost:3000 ou domínio próprio)
   if (request) {
     try {
       const url = new URL(request.url);
       const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || url.host;
-      const proto = request.headers.get('x-forwarded-proto') || (url.protocol.replace(':', '') || 'http');
-      if (host) {
+      const proto = request.headers.get('x-forwarded-proto') || (url.protocol.replace(':', '') || (host?.includes('localhost') ? 'http' : 'https'));
+      if (host && !host.includes('trycloudflare.com') && !host.includes('ngrok-free.app')) {
         return `${proto}://${host}`.replace(/\/$/, '');
       }
-      return url.origin.replace(/\/$/, '');
     } catch {
       // fallback
     }
   }
 
-  return envUrl || 'http://localhost:3000';
+  // 3. NEXT_PUBLIC_APP_URL configurado no .env (se não for túnel temporário morto)
+  const envUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (envUrl && !envUrl.includes('trycloudflare.com') && !envUrl.includes('ngrok-free.app')) {
+    return envUrl.replace(/\/$/, '');
+  }
+
+  // 4. Fallback de preview da Vercel
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`.replace(/\/$/, '');
+  }
+
+  return 'http://localhost:3000';
 }
 
 /**
