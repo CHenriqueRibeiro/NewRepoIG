@@ -36,8 +36,10 @@ import {
   Calendar,
   Users,
   CreditCard,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import BulkImportModal from './BulkImportModal';
 import {
   resolveTopicIcon,
   suggestIconForTopic,
@@ -297,6 +299,7 @@ export default function ProductManager({
 
   // Modais de controle
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   // Modal de Criação / Edição de Tópico
@@ -853,6 +856,32 @@ export default function ProductManager({
     }
   };
 
+  const handleBulkImportSuccess = (newItems: ProductItem[]) => {
+    const updatedProducts = [...newItems, ...products];
+    onChangeProducts(updatedProducts);
+
+    const currentTopics = new Set(effectiveTopics.map((t) => t.toLowerCase()));
+    const newTopicsToAdd: string[] = [];
+
+    newItems.forEach((item) => {
+      if (item.category && !currentTopics.has(item.category.toLowerCase())) {
+        currentTopics.add(item.category.toLowerCase());
+        newTopicsToAdd.push(item.category);
+      }
+    });
+
+    if (newTopicsToAdd.length > 0) {
+      onChangeTopics?.([...effectiveTopics, ...newTopicsToAdd]);
+      const newIcons = { ...(topicIcons || {}) };
+      newTopicsToAdd.forEach((t) => {
+        if (!newIcons[t]) {
+          newIcons[t] = suggestIconForTopic(t);
+        }
+      });
+      onChangeTopicIcons?.(newIcons);
+    }
+  };
+
   const handleDuplicateProduct = (indexInAll: number) => {
     const original = products[indexInAll];
     const duplicated: ProductItem = {
@@ -916,14 +945,24 @@ export default function ProductManager({
           </p>
         </div>
 
-        {/* Botão de Adição Contextual */}
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        {/* Botões de Adição e Importação em Massa */}
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={<FileSpreadsheet className="w-4 h-4 text-emerald-600" />}
+            onClick={() => setIsBulkImportOpen(true)}
+            className="w-full sm:w-auto text-slate-700 hover:text-slate-900 border-slate-300 hover:bg-slate-50 font-bold"
+          >
+            Importar em Massa (CSV / Excel / MD)
+          </Button>
+
           <Button
             variant="primary"
             size="sm"
             leftIcon={<Plus className="w-4 h-4" />}
             onClick={() => openCreateModal(selectedTopic !== 'ALL' ? selectedTopic : undefined)}
-            className="w-full sm:w-auto shadow-xs"
+            className="w-full sm:w-auto shadow-xs font-bold"
           >
             {selectedTopic === 'ALL'
               ? isServicesCatalog
@@ -2973,6 +3012,14 @@ export default function ProductManager({
           </div>
         </div>
       )}
+
+      {/* Modal de Importação em Massa (CSV, Excel, Markdown) */}
+      <BulkImportModal
+        isOpen={isBulkImportOpen}
+        onClose={() => setIsBulkImportOpen(false)}
+        onImportSuccess={handleBulkImportSuccess}
+        defaultCategory={selectedTopic !== 'ALL' ? selectedTopic : undefined}
+      />
     </div>
   );
 }
