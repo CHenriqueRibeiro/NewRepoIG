@@ -67,12 +67,13 @@ const GRAPH_API_URL = `https://graph.facebook.com/${GRAPH_API_VERSION}`;
  * 3. Se estiver em requisição local ou preview, utiliza a origem da requisição atual
  */
 export function getAppBaseUrl(request?: { url: string; headers: { get(name: string): string | null } }): string {
-  // 1. Domínio de Produção Oficial na Vercel (sempre permanente)
-  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
-    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`.replace(/\/$/, '');
+  // 1. URL pública explícita configurada no .env (se não for localhost ou túnel temporário morto)
+  const envUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (envUrl && !envUrl.includes('trycloudflare.com') && !envUrl.includes('ngrok-free.app') && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
+    return envUrl.replace(/\/$/, '');
   }
 
-  // 2. Se a requisição veio do navegador (ex: http://localhost:3000 ou domínio próprio)
+  // 2. Se a requisição veio do navegador (ex: vitryne-ig.vercel.app ou localhost:3000)
   if (request) {
     try {
       const url = new URL(request.url);
@@ -86,10 +87,9 @@ export function getAppBaseUrl(request?: { url: string; headers: { get(name: stri
     }
   }
 
-  // 3. NEXT_PUBLIC_APP_URL configurado no .env (se não for túnel temporário morto)
-  const envUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
-  if (envUrl && !envUrl.includes('trycloudflare.com') && !envUrl.includes('ngrok-free.app')) {
-    return envUrl.replace(/\/$/, '');
+  // 3. Domínio de Produção Oficial na Vercel (fallback de infraestrutura)
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`.replace(/\/$/, '');
   }
 
   // 4. Fallback de preview da Vercel
@@ -97,7 +97,7 @@ export function getAppBaseUrl(request?: { url: string; headers: { get(name: stri
     return `https://${process.env.VERCEL_URL}`.replace(/\/$/, '');
   }
 
-  return 'http://localhost:3000';
+  return envUrl || 'http://localhost:3000';
 }
 
 /**
