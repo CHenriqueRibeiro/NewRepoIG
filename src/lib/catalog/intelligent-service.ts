@@ -700,13 +700,33 @@ export class IntelligentCatalogService {
     productId: string;
     priceCents: number;
     catalogSlug?: string;
+    title?: string;
+    description?: string;
+    category?: string;
+    stock?: number;
   }): Promise<{ success: boolean; product?: ProductEntity; request?: PriceConfirmationRequest }> {
-    const { requestId, productId, priceCents, catalogSlug = 'minha-loja' } = params;
+    const {
+      requestId,
+      productId,
+      priceCents,
+      catalogSlug = 'minha-loja',
+      title,
+      description,
+      category,
+      stock,
+    } = params;
 
     // 1. Atualiza no store de inteligência
     const product = await this.getProductById(productId);
     if (product) {
       product.price_cents = priceCents;
+      if (title && title.trim()) product.title = title.trim();
+      if (description !== undefined) {
+        product.description = description.trim();
+        product.canonical_description = `${product.title}. ${description.trim()}`;
+      }
+      if (category && category.trim()) product.category = category.trim();
+      if (typeof stock === 'number' && stock >= 0) product.stock_quantity = stock;
     }
 
     // 2. Atualiza no catálogo público da vitrine (getServerCatalog / saveServerCatalog)
@@ -717,14 +737,18 @@ export class IntelligentCatalogService {
         const pIndex = activeCatalog.products.findIndex((p) => p.id === productId);
         if (pIndex !== -1) {
           activeCatalog.products[pIndex].price = priceCents / 100;
+          if (title && title.trim()) activeCatalog.products[pIndex].name = title.trim();
+          if (description !== undefined) activeCatalog.products[pIndex].description = description.trim();
+          if (category && category.trim()) activeCatalog.products[pIndex].category = category.trim();
+          if (typeof stock === 'number' && stock >= 0) activeCatalog.products[pIndex].stock = stock;
         } else if (product) {
           activeCatalog.products.unshift({
             id: product.id,
-            name: product.title,
-            description: product.description || '',
-            category: product.category || 'Lançamentos',
+            name: (title && title.trim()) || product.title,
+            description: (description !== undefined ? description.trim() : product.description) || '',
+            category: (category && category.trim()) || product.category || 'Lançamentos',
             price: priceCents / 100,
-            stock: product.stock_quantity,
+            stock: typeof stock === 'number' ? stock : product.stock_quantity,
             images: product.image_url ? [product.image_url] : [],
             isUniquePiece: product.is_unique_piece,
             badge: 'Recém Chegado do Story',

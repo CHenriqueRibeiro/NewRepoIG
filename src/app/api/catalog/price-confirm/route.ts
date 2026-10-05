@@ -25,7 +25,16 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { requestId, productId, price, catalogSlug = 'minha-loja' } = body;
+    const {
+      requestId,
+      productId,
+      price,
+      catalogSlug = 'minha-loja',
+      title,
+      description,
+      category,
+      stock,
+    } = body;
 
     if (!productId || typeof price !== 'number') {
       return NextResponse.json(
@@ -40,6 +49,10 @@ export async function POST(req: NextRequest) {
       productId,
       priceCents,
       catalogSlug,
+      title,
+      description,
+      category,
+      stock: typeof stock === 'number' ? stock : undefined,
     });
 
     // Se houver uma requisição pendente com buyerId, envia mensagem automática no Direct da cliente
