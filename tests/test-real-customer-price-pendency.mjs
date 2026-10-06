@@ -8,6 +8,7 @@ test('Pendências de Loja: Apenas clientes REAIS criam pendência (zero fake de 
   await fetch(`${BASE_URL}/api/catalog/price-confirm?requestId=ALL`, { method: 'DELETE' });
 
   // 1. Simular sincronização de Story sem preço
+  const uniqueTag = 'novidade_inédita_' + Date.now();
   const storyMediaId = 'story_real_customer_test_' + Date.now();
   const syncRes = await fetch(`${BASE_URL}/api/instagram/sync`, {
     method: 'POST',
@@ -15,12 +16,14 @@ test('Pendências de Loja: Apenas clientes REAIS criam pendência (zero fake de 
     body: JSON.stringify({
       instagramMediaId: storyMediaId,
       mediaType: 'STORY',
-      mediaUrl: 'https://images.unsplash.com/photo-coca-cola-' + Date.now() + '.jpg',
-      caption: 'Novidade nos stories! ✨',
+      mediaUrl: `https://images.unsplash.com/photo-${uniqueTag}.jpg`,
+      caption: `Peça exclusiva nos bastidores: ${uniqueTag} ✨`,
     }),
   });
 
   assert.equal(syncRes.status, 200);
+  const syncData = await syncRes.json();
+  const targetStoreId = syncData.processedMedia?.store_id || 'store_demo_vitryne';
 
   // 2. Verificar que NÃO foi criada nenhuma notificação de "Lojista"
   const pendingCheckRes = await fetch(`${BASE_URL}/api/catalog/price-confirm`);
@@ -40,9 +43,10 @@ test('Pendências de Loja: Apenas clientes REAIS criam pendência (zero fake de 
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
+      storeId: targetStoreId,
       buyerId: realBuyerId,
       buyerUsername: 'carol_mendes',
-      messageText: 'Oi, quanto custa esse look do story?',
+      messageText: `Quanto custa essa peça que você postou nos stories?`,
       storyMediaId: storyMediaId,
     }),
   });
@@ -60,7 +64,7 @@ test('Pendências de Loja: Apenas clientes REAIS criam pendência (zero fake de 
   assert.equal(realRequests.length, 1, 'Deve existir exatamente 1 pendência agora.');
   assert.equal(realRequests[0].buyer_username, 'carol_mendes', 'A pendência deve ser da cliente real @carol_mendes.');
   assert.ok(
-    realRequests[0].inquiry_text.includes('quanto custa'),
+    realRequests[0].inquiry_text.includes('Quanto custa'),
     'Deve conter a pergunta real da cliente.'
   );
 
@@ -72,7 +76,7 @@ test('Pendências de Loja: Apenas clientes REAIS criam pendência (zero fake de 
       requestId: realRequests[0].id,
       productId: realRequests[0].product_id,
       price: 140.0,
-      title: 'Conjunto Lançamento Coca',
+      title: `Vestido ${uniqueTag}`,
     }),
   });
 

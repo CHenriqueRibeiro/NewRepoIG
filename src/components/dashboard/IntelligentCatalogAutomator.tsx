@@ -128,8 +128,8 @@ export default function IntelligentCatalogAutomator() {
 
                 next[req.id] = {
                   title: detectedName,
-                  price: '149,90',
-                  stock: '5',
+                  price: '',
+                  stock: '1',
                   category: 'Vestuário',
                   description: '',
                 };
@@ -172,8 +172,8 @@ export default function IntelligentCatalogAutomator() {
       [id]: {
         ...(prev[id] || {
           title: '',
-          price: '149,90',
-          stock: '5',
+          price: '',
+          stock: '1',
           category: 'Vestuário',
           description: '',
         }),
@@ -185,15 +185,15 @@ export default function IntelligentCatalogAutomator() {
   const handleConfirmPrice = async (req: PendingPriceRequest) => {
     const itemData = formData[req.id] || {
       title: req.product_title || 'Look do Story',
-      price: '149,90',
-      stock: '5',
+      price: '',
+      stock: '1',
       category: 'Vestuário',
       description: '',
     };
 
     const cleanNum = parseFloat(itemData.price.replace(/\./g, '').replace(',', '.'));
     if (isNaN(cleanNum) || cleanNum <= 0) {
-      alert('Por favor, informe um preço numérico maior que zero (ex: 149,90).');
+      alert('Por favor, informe o valor da peça (ex: 89,90 ou 140,00).');
       return;
     }
 
@@ -552,7 +552,7 @@ export default function IntelligentCatalogAutomator() {
                                         type="text"
                                         value={current.price}
                                         onChange={(e) => updateFormField(req.id, 'price', e.target.value)}
-                                        placeholder="149,90"
+                                        placeholder="Ex: 89,90"
                                         className="w-full pl-8 pr-3 py-2 text-sm font-bold text-slate-900 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
                                       />
                                     </div>

@@ -326,7 +326,7 @@ function generateHeuristicAttributes(imageUrl: string, caption?: string): Vision
     genero = 'masculino';
     estilo = 'esportivo / tático militar';
     suggestedTitle = 'Relógio Casio G-Shock Protection All Black';
-    estimatedPriceCents = estimatedPriceCents || 38990; // R$ 389,90
+    estimatedPriceCents = estimatedPriceCents || 0;
   }
   // 2. Detecção de Perfumaria / Cosméticos / Perfumes / O Boticário
   else if (
@@ -353,7 +353,7 @@ function generateHeuristicAttributes(imageUrl: string, caption?: string): Vision
     genero = 'unissex';
     estilo = 'vintage colecionador';
     suggestedTitle = 'Colônia Free Clássico O Boticário Vintage 115ml';
-    estimatedPriceCents = 14990; // R$ 149,90
+    estimatedPriceCents = estimatedPriceCents || 0;
   }
   // 3. Detecção de Software / SaaS / Serviços Digitais / Tecnologia
   else if (
@@ -373,7 +373,7 @@ function generateHeuristicAttributes(imageUrl: string, caption?: string): Vision
     estilo = 'tecnologia e inovação';
     const firstLine = text ? text.split('\n')[0].replace(/[#@]/g, '').trim() : '';
     suggestedTitle = firstLine && firstLine.length < 50 ? firstLine : 'Plano & Serviço Digital';
-    estimatedPriceCents = 19700; // R$ 197,00
+    estimatedPriceCents = estimatedPriceCents || 0;
   }
   // 4. Detecção de Vestidos
   else if (text.includes('vestido') || url.includes('vestido') || url.includes('photo-1572804013309')) {
@@ -385,7 +385,7 @@ function generateHeuristicAttributes(imageUrl: string, caption?: string): Vision
     modelagem = 'evasê';
     detalhes = ['decote suave', 'comprimento midi'];
     suggestedTitle = 'Vestido Midi Fluido';
-    estimatedPriceCents = 18990;
+    estimatedPriceCents = estimatedPriceCents || 0;
   }
   // 5. Detecção de Blusas (quando mencionado ou detectado na imagem)
   else if (
@@ -405,7 +405,7 @@ function generateHeuristicAttributes(imageUrl: string, caption?: string): Vision
     genero = 'feminino';
     estilo = 'casual chic';
     suggestedTitle = manga === 'bufante' ? 'Blusa Feminina Bufante' : 'Blusa Feminina Manga Curta';
-    estimatedPriceCents = 8990;
+    estimatedPriceCents = estimatedPriceCents || 0;
   }
   // 6. Detecção de Semijoias
   else if (/\b(ouro|semijoia|semijoias|brinco|brincos|pulseira|pulseiras|colar|colares|anel|aneis)\b/i.test(text)) {
@@ -417,7 +417,7 @@ function generateHeuristicAttributes(imageUrl: string, caption?: string): Vision
     estampa = 'lisa';
     modelagem = 'delicada';
     suggestedTitle = 'Brinco Argola Ouro 18k';
-    estimatedPriceCents = 7990;
+    estimatedPriceCents = estimatedPriceCents || 0;
   }
   // 7. Detecção de Serviços de Barbearia / Salão / Estética / Manicure / Detailing
   else if (/\b(corte|barba|cabelo|barbearia|manicure|pedicure|unha|unhas|lash|cilios|sobrancelha|limpeza de pele|estetica|estética|detailing|polimento|lavagem|agendamento)\b/i.test(text)) {

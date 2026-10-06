@@ -172,7 +172,7 @@ export async function processIncomingInstagramMedia(
   // 4. ANÁLISE DE IMAGEM VIA OPENAI VISION (ATRIBUTOS DINÂMICOS EM JSON)
   console.log(`🧠 [Vision] Analisando imagem e extraindo atributos estruturados...`);
   const visionResult = await analyzeMediaWithVision({
-    imageUrl: visualAnalysisTargetUrl,
+    imageUrl: persistedImageUrl || visualAnalysisTargetUrl,
     caption,
     apiKey: openAiApiKey,
   });
