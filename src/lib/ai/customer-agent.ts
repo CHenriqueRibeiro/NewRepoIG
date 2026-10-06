@@ -627,7 +627,6 @@ export class CommercialSalesAgent {
 
     if (
       intentAnalysis.suggestedCommercialAction !== 'ask_qualifying_question' &&
-      intentAnalysis.primaryIntent !== 'service_inquiry' &&
       (
         intentAnalysis.suggestedCommercialAction === 'recommend_products' ||
         intentAnalysis.primaryIntent === 'product_inquiry' ||

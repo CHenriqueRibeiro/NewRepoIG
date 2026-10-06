@@ -73,6 +73,7 @@ export async function processIncomingInstagramMedia(
 ): Promise<SyncPipelineResult> {
   const {
     storeId,
+    catalogSlug,
     instagramMediaId,
     mediaType,
     mediaUrl,
@@ -193,7 +194,7 @@ export async function processIncomingInstagramMedia(
 
   // Se houver produto no catálogo com a mesma imagem base (mesma foto já cadastrada)
   try {
-    const allExistingProducts = await intelligentCatalogService.listProducts(undefined, catalogSlug);
+    const allExistingProducts = await intelligentCatalogService.listProducts(storeId, catalogSlug);
     const cleanMediaBase = (mediaUrl || '').split('?')[0];
     const sameImageCandidate = cleanMediaBase
       ? allExistingProducts.find((p) => {
