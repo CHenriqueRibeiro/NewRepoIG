@@ -250,7 +250,7 @@ export function PixPaymentModal({
               <span>Seu pedido é reservado na hora</span>
             </div>
 
-            {onFallbackDirectWhatsApp && (
+            {onFallbackDirectWhatsApp && !(paymentConfig?.pixEnabled && paymentConfig?.pixKey?.trim()) && (
               <button
                 type="button"
                 onClick={() => {

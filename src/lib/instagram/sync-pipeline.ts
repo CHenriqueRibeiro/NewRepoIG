@@ -311,23 +311,11 @@ export async function processIncomingInstagramMedia(
     // "quando subir um produto e nao tiver preço e para que diga que ainda nao esta no catalogo e que em breve vai ser colocado,
     //  nao e para ir com valor e etc e muito menos com nome... so e para responder caso seja cadastrado o valor"
     if (priceCents <= 0) {
-      try {
-        await intelligentCatalogService.createPriceConfirmationRequest({
-          storeId,
-          productId: autoCreatedProduct.id,
-          productTitle: autoCreatedProduct.title,
-          productImageUrl: persistedImageUrl || autoCreatedProduct.image_url,
-          buyerUsername: 'Lojista',
-          buyerId: 'system_sync',
-          inquiryText: `Nova peça do Story/Post (${cleanTitle}) aguardando definição de valor.`,
-        });
-        console.log(`⏳ [Sync Pipeline] Produto "${cleanTitle}" cadastrado como 'inactive'. Aguardando definição de valor antes de publicar no catálogo.`);
-      } catch (reqErr) {
-        console.warn('[Sync Pipeline Price Request Warn]', reqErr);
-      }
+      // NÃO cria notificação artificial de 'Lojista'. A notificação só surge quando um cliente DE VERDADE perguntar no Direct/Story.
+      console.log(`⏳ [Sync Pipeline] Produto "${cleanTitle}" cadastrado como 'inactive'. Aguardando pergunta de cliente antes de solicitar preço ou publicar no catálogo.`);
       decisionResult.matched_product = autoCreatedProduct;
-      decisionResult.match_status = 'suggested_new';
-      decisionResult.decision = 'no_match';
+      decisionResult.match_status = 'confirmed';
+      decisionResult.decision = 'strong_match';
     } else {
       // 3. SÓ PUBLICA NA VITRINE SE TIVER VALOR CADASTRADO (> 0)
       try {

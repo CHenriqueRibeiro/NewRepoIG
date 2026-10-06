@@ -704,6 +704,22 @@ export class IntelligentCatalogService {
   }): Promise<PriceConfirmationRequest> {
     global.__intelligentPriceRequestsStore = global.__intelligentPriceRequestsStore || [];
 
+    // Ignora solicitações que não sejam de clientes reais (ex: geradas automaticamente por 'Lojista' ou 'system_sync')
+    if (params.buyerId === 'system_sync' || params.buyerUsername?.toLowerCase() === 'lojista') {
+      console.log(`ℹ️ [Micro-Confirmação Ignorada] Ignorando criação de solicitação artificial para @${params.buyerUsername}`);
+      return {
+        id: `ignored_${Date.now()}`,
+        store_id: params.storeId,
+        product_id: params.productId,
+        product_title: params.productTitle,
+        buyer_username: params.buyerUsername,
+        buyer_id: params.buyerId,
+        inquiry_text: params.inquiryText,
+        status: 'confirmed',
+        created_at: new Date().toISOString(),
+      };
+    }
+
     // Se já houver uma requisição pendente para o mesmo produto e comprador
     const existing = global.__intelligentPriceRequestsStore.find(
       (r) => r.product_id === params.productId && r.buyer_id === params.buyerId && r.status === 'pending'
@@ -732,10 +748,12 @@ export class IntelligentCatalogService {
   }
 
   /**
-   * Lista solicitações de preço pendentes para o lojista
+   * Lista solicitações de preço pendentes para o lojista (Apenas de clientes reais)
    */
   async listPriceConfirmationRequests(storeId?: string): Promise<PriceConfirmationRequest[]> {
-    global.__intelligentPriceRequestsStore = global.__intelligentPriceRequestsStore || [];
+    global.__intelligentPriceRequestsStore = (global.__intelligentPriceRequestsStore || []).filter(
+      (r) => r.buyer_id !== 'system_sync' && r.buyer_username?.toLowerCase() !== 'lojista'
+    );
     if (!storeId) {
       return global.__intelligentPriceRequestsStore;
     }

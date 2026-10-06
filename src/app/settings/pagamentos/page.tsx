@@ -140,6 +140,8 @@ export default function PaymentsSettingsPage() {
       return;
     }
 
+    const isPixActive = pixEnabled && Boolean(pixKey.trim());
+
     try {
       const updatedCatalog: CatalogConfig = {
         ...catalog,
@@ -150,7 +152,7 @@ export default function PaymentsSettingsPage() {
           pixBeneficiaryName: pixBeneficiaryName.trim(),
           pixBeneficiaryCity: pixBeneficiaryCity.trim() || 'São Paulo',
           showPixScreenWithProof,
-          allowWhatsAppDirectCheckout,
+          allowWhatsAppDirectCheckout: isPixActive ? false : allowWhatsAppDirectCheckout,
         },
       };
 
@@ -398,22 +400,36 @@ export default function PaymentsSettingsPage() {
             </div>
           </label>
 
-          {/* Opção B: Finalizar direto pelo WhatsApp */}
-          <label className="p-4 rounded-2xl border border-slate-200 hover:border-slate-300 bg-slate-50/50 flex items-start gap-3.5 cursor-pointer transition-all">
+          {/* Opção B: Finalizar direto pelo WhatsApp (apenas quando PIX não estiver ativo) */}
+          <label
+            className={`p-4 rounded-2xl border transition-all ${
+              pixEnabled && pixKey.trim()
+                ? 'border-slate-200 bg-slate-50/80 opacity-75 cursor-not-allowed'
+                : 'border-slate-200 hover:border-slate-300 bg-slate-50/50 cursor-pointer'
+            } flex items-start gap-3.5`}
+          >
             <input
               type="checkbox"
-              checked={allowWhatsAppDirectCheckout}
+              checked={pixEnabled && pixKey.trim() ? false : allowWhatsAppDirectCheckout}
+              disabled={Boolean(pixEnabled && pixKey.trim())}
               onChange={(e) => setAllowWhatsAppDirectCheckout(e.target.checked)}
               className="mt-0.5 w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
             />
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <span className="text-xs sm:text-sm font-bold text-slate-900">
-                  Permitir Finalizar Pedido Direto pelo WhatsApp
+                  Permitir Finalizar Pedido Direto pelo WhatsApp (Sem PIX)
                 </span>
+                {pixEnabled && pixKey.trim() && (
+                  <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full border border-amber-200">
+                    Desativado com PIX Ativo
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Exibe o botão de enviar o pedido formatado diretamente para o seu WhatsApp comercial, para quem prefere negociar e combinar os detalhes por mensagem.
+                {pixEnabled && pixKey.trim()
+                  ? 'Como a sua Chave PIX está ativa, o cliente só pode finalizar os pedidos pela sacola pagando via PIX com envio de comprovante, impedindo pedidos diretos pelo WhatsApp sem pagamento.'
+                  : 'Exibe o botão de enviar o pedido formatado diretamente para o seu WhatsApp comercial, para quem prefere negociar e combinar os detalhes por mensagem.'}
               </p>
             </div>
           </label>

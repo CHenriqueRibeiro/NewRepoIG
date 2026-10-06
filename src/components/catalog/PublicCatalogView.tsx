@@ -1876,7 +1876,7 @@ export default function PublicCatalogView({
                 )}
 
                 {/* Opções de Checkout PIX & WhatsApp */}
-                {catalog.paymentConfig?.pixEnabled && catalog.paymentConfig?.pixKey && (catalog.paymentConfig.showPixScreenWithProof ?? true) ? (
+                {catalog.paymentConfig?.pixEnabled && catalog.paymentConfig?.pixKey?.trim() && (catalog.paymentConfig.showPixScreenWithProof ?? true) ? (
                   <div className="space-y-2">
                     <button
                       type="button"
@@ -1886,17 +1886,6 @@ export default function PublicCatalogView({
                       <Wallet className="w-4 h-4 text-emerald-400" />
                       <span>Pagar com PIX &amp; Enviar Comprovante</span>
                     </button>
-
-                    {(catalog.paymentConfig.allowWhatsAppDirectCheckout ?? true) && (
-                      <button
-                        type="button"
-                        onClick={handleCheckoutWhatsApp}
-                        className="w-full py-3 rounded-xl border-2 border-emerald-600/70 hover:bg-emerald-50 text-emerald-800 font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-all active:scale-[0.99]"
-                      >
-                        <MessageCircle className="w-4 h-4 text-emerald-600" />
-                        <span>Finalizar direto pelo WhatsApp</span>
-                      </button>
-                    )}
                   </div>
                 ) : (
                   <button
@@ -1916,18 +1905,11 @@ export default function PublicCatalogView({
                     <span>Compra 100% segura</span>
                   </div>
                   <p className="text-[10px] text-stone-400">
-                    Você será direcionado para o WhatsApp para concluir seu pedido.
+                    {catalog.paymentConfig?.pixEnabled && catalog.paymentConfig?.pixKey?.trim()
+                      ? 'Pague com PIX e envie o comprovante no WhatsApp da loja.'
+                      : 'Você será direcionado para o WhatsApp para concluir seu pedido.'}
                   </p>
                 </div>
-
-                {/* Alternativa PIX Instantâneo */}
-                <Link
-                  href={`/checkout/vit-${Date.now()}`}
-                  className="w-full py-2.5 rounded-xl border border-stone-300 hover:bg-stone-100 text-stone-700 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all text-center"
-                >
-                  <span>Pagar Agora com PIX Dinâmico</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
               </div>
             )}
           </div>
@@ -1960,7 +1942,7 @@ export default function PublicCatalogView({
         }
         shippingCost={shippingCost}
         discountAmount={progressiveDiscountAmount}
-        onFallbackDirectWhatsApp={handleCheckoutWhatsApp}
+        onFallbackDirectWhatsApp={catalog.paymentConfig?.pixEnabled && catalog.paymentConfig?.pixKey?.trim() ? undefined : handleCheckoutWhatsApp}
       />
 
       {/* 7. Botão Flutuante de Sacola no Mobile (quando há itens) */}

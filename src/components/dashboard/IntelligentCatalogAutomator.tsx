@@ -5,7 +5,6 @@ import {
   Bell,
   CheckCircle2,
   AlertTriangle,
-  PlusCircle,
   RefreshCw,
   X,
   Package,
@@ -113,7 +112,9 @@ export default function IntelligentCatalogAutomator() {
       if (priceRes.ok) {
         const priceData = await priceRes.json();
         if (priceData.success) {
-          const pend = (priceData.requests || []).filter((r: PendingPriceRequest) => r.status === 'pending');
+          const pend = (priceData.requests || [])
+            .filter((r: PendingPriceRequest) => r.status === 'pending')
+            .filter((r: PendingPriceRequest) => r.buyer_id !== 'system_sync' && r.buyer_username?.toLowerCase() !== 'lojista');
           setPendingPrices(pend);
 
           // Inicializa dados pré-preenchidos para cadastro de cada item
@@ -320,10 +321,9 @@ export default function IntelligentCatalogAutomator() {
 
   // Separação de status das publicações
   const pendingPhotoMatches = relations.filter((r) => r.match_status === 'pending_confirmation');
-  const suggestedNew = relations.filter((r) => r.match_status === 'suggested_new');
 
-  // Total de pendências que exigem ação do dono da loja
-  const totalPendencias = pendingPrices.length + pendingPhotoMatches.length + suggestedNew.length;
+  // Total de pendências que exigem ação do dono da loja (clientes reais aguardando preço ou fotos para confirmar)
+  const totalPendencias = pendingPrices.length + pendingPhotoMatches.length;
 
   return (
     <div className="w-full">
@@ -347,8 +347,7 @@ export default function IntelligentCatalogAutomator() {
               </div>
               <p className="text-xs text-amber-800 mt-0.5 truncate">
                 {pendingPrices.length > 0 && `${pendingPrices.length} cliente(s) aguardando preço no Direct. `}
-                {pendingPhotoMatches.length > 0 && `${pendingPhotoMatches.length} foto(s) para confirmar peça. `}
-                {suggestedNew.length > 0 && `${suggestedNew.length} nova(s) peça(s) detectada(s).`}
+                {pendingPhotoMatches.length > 0 && `${pendingPhotoMatches.length} foto(s) para confirmar peça.`}
               </p>
             </div>
           </div>
@@ -695,62 +694,6 @@ export default function IntelligentCatalogAutomator() {
                                   </Button>
                                 </div>
                               ))}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* 3. Novas Peças Detectadas nos Stories */}
-                  {suggestedNew.length > 0 && (
-                    <div className="space-y-3 pt-4 border-t border-slate-200">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-bold text-xs sm:text-sm text-slate-900 flex items-center gap-2">
-                          <PlusCircle className="w-4 h-4 text-blue-500" />
-                          <span>Novas Peças Detectadas nos Stories ({suggestedNew.length})</span>
-                        </h4>
-                      </div>
-
-                      {suggestedNew.map((rel) => (
-                        <div
-                          key={rel.id}
-                          className="p-4 border border-blue-200 bg-blue-50/30 rounded-xl flex flex-col md:flex-row gap-4 items-start"
-                        >
-                          <div className="w-full md:w-32 aspect-square sm:aspect-[4/5] rounded-lg overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
-                            <img
-                              src={
-                                rel.media?.media_url ||
-                                rel.media?.thumbnail_url ||
-                                'https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?w=800'
-                              }
-                              alt="Nova Peça"
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-
-                          <div className="flex-1 w-full">
-                            <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-100 text-blue-800 rounded">
-                              Peça Detectada
-                            </span>
-                            <h5 className="text-sm font-bold text-slate-900 mt-1">
-                              {rel.media?.caption || 'Peça Inédita no Feed/Story'}
-                            </h5>
-                            <p className="text-xs text-slate-600 mt-0.5">
-                              {rel.media?.canonical_description}
-                            </p>
-
-                            <div className="mt-3 flex flex-wrap items-center gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                isLoading={dismissingId === rel.id}
-                                leftIcon={<X className="w-3.5 h-3.5 text-slate-400" />}
-                                className="text-slate-600 hover:text-slate-900 border-slate-300 text-xs hover:bg-slate-100"
-                                onClick={() => handleDismissRelation(rel.id)}
-                              >
-                                Não é Produto
-                              </Button>
                             </div>
                           </div>
                         </div>

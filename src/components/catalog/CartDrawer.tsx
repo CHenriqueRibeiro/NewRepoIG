@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
 import {
   ShoppingBag,
   X,
@@ -12,7 +11,6 @@ import {
   Sparkles,
   MessageCircle,
   ShieldCheck,
-  ArrowRight,
   AlertCircle,
   Truck,
   Bike,
@@ -614,7 +612,7 @@ export default function CartDrawer({
             </div>
 
             {/* Opções de Checkout com PIX e WhatsApp */}
-            {catalog.paymentConfig?.pixEnabled && catalog.paymentConfig?.pixKey && (catalog.paymentConfig.showPixScreenWithProof ?? true) ? (
+            {catalog.paymentConfig?.pixEnabled && catalog.paymentConfig?.pixKey?.trim() && (catalog.paymentConfig.showPixScreenWithProof ?? true) ? (
               <div className="space-y-2">
                 <button
                   type="button"
@@ -624,17 +622,6 @@ export default function CartDrawer({
                   <Wallet className="w-4 h-4 text-emerald-400" />
                   <span>Pagar com PIX &amp; Enviar Comprovante</span>
                 </button>
-
-                {(catalog.paymentConfig.allowWhatsAppDirectCheckout ?? true) && (
-                  <button
-                    type="button"
-                    onClick={handleCheckoutWhatsApp}
-                    className="w-full py-3 rounded-2xl border-2 border-emerald-600/70 hover:bg-emerald-50 text-emerald-800 font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-all active:scale-[0.99]"
-                  >
-                    <MessageCircle className="w-4 h-4 text-emerald-600" />
-                    <span>Finalizar direto pelo WhatsApp</span>
-                  </button>
-                )}
               </div>
             ) : (
               <button
@@ -660,15 +647,6 @@ export default function CartDrawer({
                   : 'Compra 100% segura direto com a loja'}
               </span>
             </div>
-
-            {/* Alternativa PIX Instantâneo / Gateway */}
-            <Link
-              href={`/checkout/cart-${Date.now()}`}
-              className="w-full py-2.5 rounded-xl border border-stone-300 hover:bg-stone-100 text-stone-700 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all text-center"
-            >
-              <span>Pagar com PIX Dinâmico ou Cartão</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
           </div>
         )}
       </div>
@@ -699,7 +677,7 @@ export default function CartDrawer({
         }
         shippingCost={shippingCost}
         discountAmount={progressiveDiscountAmount}
-        onFallbackDirectWhatsApp={handleCheckoutWhatsApp}
+        onFallbackDirectWhatsApp={catalog.paymentConfig?.pixEnabled && catalog.paymentConfig?.pixKey?.trim() ? undefined : handleCheckoutWhatsApp}
       />
     </div>
   );

@@ -31,7 +31,9 @@ export default function PriceConfirmationBanner() {
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
-          const pending = (data.requests || []).filter((r: PendingPriceRequest) => r.status === 'pending');
+          const pending = (data.requests || [])
+            .filter((r: PendingPriceRequest) => r.status === 'pending')
+            .filter((r: PendingPriceRequest) => r.buyer_id !== 'system_sync' && r.buyer_username?.toLowerCase() !== 'lojista');
           setRequests(pending);
         }
       }

@@ -167,6 +167,10 @@ export default function DedicatedProductPage({
     currency: 'BRL',
   });
 
+  const hasPixEnabled = Boolean(
+    catalog.paymentConfig?.pixEnabled && catalog.paymentConfig?.pixKey?.trim()
+  );
+
   const formattedOriginalPrice = product.discountPrice
     ? product.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
     : null;
@@ -718,23 +722,17 @@ export default function DedicatedProductPage({
                       <span>Adicionar à Sacola ({formattedTotalPrice})</span>
                     </button>
 
-                    {/* BOTÃO GARANTIR PELO WHATSAPP */}
-                    <button
-                      type="button"
-                      onClick={handleWhatsAppBuy}
-                      className="w-full py-3.5 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-bold text-sm transition-all shadow-xs flex items-center justify-center gap-2"
-                    >
-                      <MessageCircle className="w-4 h-4" />
-                      <span>Pedir direto pelo WhatsApp</span>
-                    </button>
-
-                    {/* BOTÃO COMPRAR COM PIX DIRETO */}
-                    <Link
-                      href={`/checkout/${product.id}`}
-                      className="w-full py-3 px-6 rounded-2xl border border-stone-300 hover:bg-stone-100 active:scale-[0.99] text-stone-700 font-semibold text-xs transition-all flex items-center justify-center gap-2 text-center"
-                    >
-                      <span>Checkout Expresso com PIX</span>
-                    </Link>
+                    {/* BOTÃO GARANTIR PELO WHATSAPP (Apenas exibido se a loja NÃO liberou recebimento por PIX) */}
+                    {!hasPixEnabled && (
+                      <button
+                        type="button"
+                        onClick={handleWhatsAppBuy}
+                        className="w-full py-3.5 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-bold text-sm transition-all shadow-xs flex items-center justify-center gap-2"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        <span>Pedir direto pelo WhatsApp</span>
+                      </button>
+                    )}
                   </>
                 )}
               </div>
@@ -875,20 +873,24 @@ export default function DedicatedProductPage({
             <button
               type="button"
               onClick={handleAddToCart}
-              className="py-2.5 px-4 rounded-xl text-white font-bold text-xs shadow-md flex items-center gap-1.5 shrink-0"
+              className={`py-2.5 px-4 rounded-xl text-white font-bold text-xs shadow-md flex items-center justify-center gap-1.5 ${
+                hasPixEnabled ? 'w-full' : 'shrink-0'
+              }`}
               style={{ backgroundColor: brandPrimaryColor }}
             >
               <ShoppingBag className="w-4 h-4" />
-              <span>Adicionar</span>
+              <span>Adicionar à Sacola</span>
             </button>
-            <button
-              type="button"
-              onClick={handleWhatsAppBuy}
-              className="p-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md flex items-center justify-center shrink-0"
-              title="Pedir pelo WhatsApp"
-            >
-              <MessageCircle className="w-4 h-4" />
-            </button>
+            {!hasPixEnabled && (
+              <button
+                type="button"
+                onClick={handleWhatsAppBuy}
+                className="p-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md flex items-center justify-center shrink-0"
+                title="Pedir pelo WhatsApp"
+              >
+                <MessageCircle className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
       </div>
