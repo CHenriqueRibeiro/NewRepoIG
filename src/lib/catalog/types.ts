@@ -69,6 +69,60 @@ export interface ProgressiveDiscountRule {
 
 export type ShippingMethod = 'motoboy' | 'sedex' | 'pickup' | 'uber_flash';
 
+export interface DeliveryRegionRule {
+  id: string;
+  cidade: string;
+  uf: string;
+  cepInicial: string;
+  cepFinal: string;
+  valor: number;
+  prazo: string;
+  ativo: boolean;
+}
+
+export const DEFAULT_DELIVERY_REGIONS: DeliveryRegionRule[] = [
+  {
+    id: 'c1',
+    cidade: 'São Paulo (Capital - Centro & Zona Sul)',
+    uf: 'SP',
+    cepInicial: '01000-000',
+    cepFinal: '05999-999',
+    valor: 15.0,
+    prazo: 'Entrega Express (Mesmo dia até 18h)',
+    ativo: true,
+  },
+  {
+    id: 'c2',
+    cidade: 'São Paulo (Zona Leste & Zona Norte)',
+    uf: 'SP',
+    cepInicial: '06000-000',
+    cepFinal: '09999-999',
+    valor: 20.0,
+    prazo: 'Até 24h úteis',
+    ativo: true,
+  },
+  {
+    id: 'c3',
+    cidade: 'Campinas e Região',
+    uf: 'SP',
+    cepInicial: '13000-000',
+    cepFinal: '13139-999',
+    valor: 28.0,
+    prazo: '1 a 2 dias úteis',
+    ativo: true,
+  },
+  {
+    id: 'c4',
+    cidade: 'Rio de Janeiro (Capital)',
+    uf: 'RJ',
+    cepInicial: '20000-000',
+    cepFinal: '23799-999',
+    valor: 32.5,
+    prazo: '2 a 3 dias úteis',
+    ativo: true,
+  },
+];
+
 export interface ShippingConfig {
   pickupEnabled: boolean;
   pickupLabel: string;
@@ -89,6 +143,8 @@ export interface ShippingConfig {
   sedexPrice: number;
   sedexEstimate: string;
   freeShippingAbove?: number; // Frete grátis acima de R$ X
+  // Cidades e Regiões de Entrega Cadastradas com Faixas de CEP
+  deliveryRegions?: DeliveryRegionRule[];
 }
 
 export interface SchedulingConfig {
@@ -188,6 +244,11 @@ export interface CatalogConfig {
   outOfStockBehavior?: 'badge-sold-out' | 'hide' | 'infinite'; // 'badge-sold-out': Selo Esgotado | 'hide': Sair da vitrine | 'infinite': Estoque Infinito
   wholesaleConfig?: WholesaleConfig; // Configuração da modalidade Atacado & Varejo
   pinBadgedProductsToTop?: boolean; // Se verdadeiro (padrão), produtos com badge/selo ficam fixados no topo da vitrine
+  niches?: string[]; // Nichos de atuação escolhidos pelo lojista (até 5)
+  whatsappProfessional?: string; // WhatsApp comercial da loja (usado por clientes finais)
+  whatsappPersonal?: string; // WhatsApp pessoal do empreendedor/dono
+  sameWhatsapp?: boolean; // Se o número profissional e pessoal são o mesmo
+  alertRecipientNumber?: 'professional' | 'personal' | 'both'; // Onde receber alertas de pedidos e cadastros
   products: ProductItem[];
 }
 

@@ -72,9 +72,14 @@ export async function matchStoryProductWithJevAndOpenAI(
     };
   }
 
-  // 1. OpenAI Multimodal Vision: inspeciona a imagem/frame do Story
+  // 1. OpenAI Multimodal Vision: inspeciona a imagem/frame do Story guiado pelos nichos da loja
   console.log(`📸 [OpenAI Vision] Inspecionando mídia do Story: ${storyIdentifier.slice(0, 60)}...`);
-  const visionAnalysis = await analyzeMediaWithVision({ imageUrl: storyIdentifier, caption: ctx.messageText });
+  const visionAnalysis = await analyzeMediaWithVision({
+    imageUrl: storyIdentifier,
+    caption: ctx.messageText,
+    storeNiches: catalog.niches,
+    businessType: catalog.businessType,
+  });
   const visualAttributes = visionAnalysis.attributes;
   const visualSummary = visionAnalysis.canonicalDescription || `${visualAttributes.categoria} ${visualAttributes.cor_principal} ${visualAttributes.detalhes?.join(' ')}`;
 

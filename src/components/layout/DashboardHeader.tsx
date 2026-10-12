@@ -19,12 +19,12 @@ export default function DashboardHeader({
   const pathname = usePathname();
 
   const getPageTitle = () => {
-    if (pathname === '/dashboard') return 'Radar de Demanda';
-    if (pathname.startsWith('/settings/ia')) return 'Configuração da IA';
+    if (pathname === '/dashboard') return 'Início';
+    if (pathname.startsWith('/modulos') || pathname.startsWith('/planos')) return 'Módulos & Planos';
+    if (pathname.startsWith('/catalogo')) return 'Catálogo';
+    if (pathname.startsWith('/settings/ia')) return 'Modo de Atuação da IA';
     if (pathname.startsWith('/settings/logistica')) return 'Regras de Logística & Frete';
     if (pathname.startsWith('/settings/pagamentos')) return 'Pagamentos & Chave PIX';
-    if (pathname.startsWith('/planos')) return 'Planos & Assinatura';
-    if (pathname.startsWith('/catalogo')) return 'Catálogo de Produtos';
     return 'Painel de Controle';
   };
 

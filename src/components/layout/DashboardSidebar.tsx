@@ -4,17 +4,14 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  BarChart3,
-  Bot,
-  Truck,
-  CreditCard,
+  LayoutDashboard,
   Layers,
   ShoppingBag,
+  Bot,
   ExternalLink,
   ChevronLeft,
   LogOut,
   X,
-  Wallet,
 } from 'lucide-react';
 
 interface NavItem {
@@ -24,12 +21,10 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Radar de Demanda', href: '/dashboard', icon: BarChart3 },
+  { label: 'Início', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Catálogo', href: '/catalogo', icon: ShoppingBag },
-  { label: 'Inteligência Artificial', href: '/settings/ia', icon: Bot },
-  { label: 'Logística & Frete', href: '/settings/logistica', icon: Truck },
-  { label: 'Pagamentos & PIX', href: '/settings/pagamentos', icon: Wallet },
-  { label: 'Planos & Assinatura', href: '/planos', icon: Layers },
+  { label: 'IA', href: '/settings/ia', icon: Bot },
+  { label: 'Módulos', href: '/modulos', icon: Layers },
 ];
 
 export interface SidebarAccountInfo {
@@ -156,6 +151,8 @@ export default function DashboardSidebar({
               const isActive =
                 item.href === '/dashboard'
                   ? pathname === '/dashboard'
+                  : item.href === '/modulos'
+                  ? pathname.startsWith('/modulos') || pathname.startsWith('/planos')
                   : pathname.startsWith(item.href);
 
               return (

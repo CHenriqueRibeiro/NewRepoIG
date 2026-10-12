@@ -79,3 +79,26 @@ export function calculateShippingOptions(params: ShippingCalculationParams): Shi
 
   return options;
 }
+
+export function cleanCep(cep: string): number {
+  return parseInt(cep.replace(/\D/g, ''), 10) || 0;
+}
+
+export function matchDeliveryRegionByCep(
+  cep: string,
+  regions?: import('@/lib/catalog/types').DeliveryRegionRule[]
+): import('@/lib/catalog/types').DeliveryRegionRule | null {
+  if (!cep || !regions || regions.length === 0) return null;
+  const numCep = cleanCep(cep);
+  if (!numCep) return null;
+
+  for (const rule of regions) {
+    if (!rule.ativo) continue;
+    const start = cleanCep(rule.cepInicial);
+    const end = cleanCep(rule.cepFinal || rule.cepInicial);
+    if (numCep >= start && numCep <= end) {
+      return rule;
+    }
+  }
+  return null;
+}

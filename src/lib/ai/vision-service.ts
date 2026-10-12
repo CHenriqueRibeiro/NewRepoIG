@@ -65,7 +65,9 @@ export function buildCanonicalDescription(attrs: ProductDynamicAttributes): stri
 async function callGeminiVision(
   imageUrl: string,
   caption?: string,
-  geminiKey?: string
+  geminiKey?: string,
+  storeNiches?: string[],
+  businessType?: 'products' | 'services' | 'hybrid'
 ): Promise<VisionAnalysisResult | null> {
   const key =
     geminiKey ||
@@ -82,11 +84,20 @@ async function callGeminiVision(
     const base64Data = Buffer.from(arrayBuffer).toString('base64');
     const mimeType = (imgRes.headers.get('content-type') || 'image/jpeg').split(';')[0];
 
-    const promptText = `Você é um catalogador comercial e analista visual de produtos e serviços.
-Analise a imagem fornecida (e a legenda '${caption || ''}') e extraia informações REAIS vistas na foto em formato JSON:
+    const nicheRule =
+      storeNiches && storeNiches.length > 0
+        ? `\nREGRA CRÍTICA DE NEGÓCIO DA LOJA:
+Esta loja atua estritamente nos seguintes nichos comerciais: ${storeNiches.join(', ')} (${
+            businessType === 'services' ? 'Modelo: Serviços e Procedimentos' : 'Modelo: Venda de Produtos Físicos'
+          }).
+Direcione a análise, categorização e descrição canônica OBRIGATORIAMENTE para o contexto desses nichos da loja. Não confunda elementos da cena com categorias alheias ao ramo da empresa.`
+        : '';
+
+    const promptText = `Você é um catalogador comercial e analista visual de produtos e serviços de alta precisão.
+Analise a imagem fornecida (e a legenda '${caption || ''}') e extraia informações REAIS vistas na foto em formato JSON:${nicheRule}
 {
-  "tipo_item": "produto" ou "servico",
-  "categoria": string,
+  "tipo_item": "${businessType === 'services' ? 'servico' : 'produto'}",
+  "categoria": string, // Priorize terminologia dos nichos da loja
   "subcategoria": string ou null,
   "titulo_sugerido": string,
   "preco_estimado_reais": number ou null, // APENAS se houver valor explícito e visível na imagem ou na legenda. Se NÃO houver preço, retorne null.
@@ -96,6 +107,8 @@ Analise a imagem fornecida (e a legenda '${caption || ''}') e extraia informaç�
   "genero": string ou null,
   "material": string ou null,
   "estilo": string ou null,
+  "duracao": string ou null,
+  "procedimento": string ou null,
   "descricao_canonica": string
 }`;
 
@@ -132,11 +145,12 @@ Analise a imagem fornecida (e a legenda '${caption || ''}') e extraia informaç�
       if (rawJson) {
         const parsed = JSON.parse(rawJson);
         const canonical = parsed.descricao_canonica || buildCanonicalDescription(parsed);
+        const fallbackCat = storeNiches && storeNiches.length > 0 ? storeNiches[0] : 'Geral';
         return {
           attributes: parsed,
           canonicalDescription: canonical,
           confidence: 0.96,
-          detectedCategory: parsed.categoria || 'Geral',
+          detectedCategory: parsed.categoria || fallbackCat,
           suggestedTitle: parsed.titulo_sugerido,
           estimatedPriceCents: parsed.preco_estimado_reais && parsed.preco_estimado_reais > 0
             ? Math.round(parsed.preco_estimado_reais * 100)
@@ -157,11 +171,13 @@ export async function analyzeMediaWithVision(params: {
   imageUrl: string;
   caption?: string;
   apiKey?: string;
+  storeNiches?: string[];
+  businessType?: 'products' | 'services' | 'hybrid';
 }): Promise<VisionAnalysisResult> {
-  const { imageUrl, caption, apiKey } = params;
+  const { imageUrl, caption, apiKey, storeNiches, businessType } = params;
 
   // 1. Tenta Gemini Vision primeiro se chave estiver disponível
-  const geminiResult = await callGeminiVision(imageUrl, caption, apiKey);
+  const geminiResult = await callGeminiVision(imageUrl, caption, apiKey, storeNiches, businessType);
   if (geminiResult) {
     return geminiResult;
   }
@@ -174,13 +190,22 @@ export async function analyzeMediaWithVision(params: {
 
   if (resolvedApiKey && resolvedApiKey.startsWith('sk-') && !resolvedApiKey.includes('mock')) {
     try {
+      const nicheInstruction =
+        storeNiches && storeNiches.length > 0
+          ? `\nREGRA CRÍTICA DE NEGÓCIO DA LOJA:
+Esta loja atua estritamente nos seguintes nichos comerciais: ${storeNiches.join(', ')} (${
+              businessType === 'services' ? 'Modelo: Serviços e Procedimentos' : 'Modelo: Venda de Produtos Físicos'
+            }).
+Direcione a análise e atributos OBRIGATORIAMENTE para o contexto desses nichos da loja. Não confunda elementos da imagem com categorias alheias ao negócio.`
+          : '';
+
       const systemPrompt = `Você é um especialista em visão computacional e catálogo comercial para e-commerce, comércio local e serviços.
-Sua missão é inspecionar minuciosamente a imagem fornecida (e a legenda opcional) e extrair os atributos estruturados do item principal em formato JSON.
+Sua missão é inspecionar minuciosamente a imagem fornecida (e a legenda opcional) e extrair os atributos estruturados do item principal em formato JSON.${nicheInstruction}
 NUNCA invente preços fictícios. O campo preco_estimado_reais só deve ser preenchido se houver valor explícito e visível na imagem ou na legenda.
 
 Retorne RIGOROSAMENTE no formato JSON:
 {
-  "tipo_item": "produto" ou "servico",
+  "tipo_item": "${businessType === 'services' ? 'servico' : 'produto'}",
   "categoria": string,
   "subcategoria": string ou null,
   "titulo_sugerido": string,
@@ -234,12 +259,13 @@ Retorne RIGOROSAMENTE no formato JSON:
         const content = data.choices[0]?.message?.content;
         const parsed = JSON.parse(content);
         const canonical = buildCanonicalDescription(parsed);
+        const fallbackCat = storeNiches && storeNiches.length > 0 ? storeNiches[0] : 'Geral';
 
         return {
           attributes: parsed,
           canonicalDescription: canonical,
           confidence: 0.95,
-          detectedCategory: parsed.categoria || 'Geral',
+          detectedCategory: parsed.categoria || fallbackCat,
           suggestedTitle: parsed.titulo_sugerido,
           estimatedPriceCents: parsed.preco_estimado_reais && parsed.preco_estimado_reais > 0
             ? Math.round(parsed.preco_estimado_reais * 100)
@@ -255,13 +281,18 @@ Retorne RIGOROSAMENTE no formato JSON:
   }
 
   // 3. Processamento puramente dinâmico quando não houver chave de IA
-  return generateHeuristicAttributes(imageUrl, caption);
+  return generateHeuristicAttributes(imageUrl, caption, storeNiches, businessType);
 }
 
 /**
  * Processamento 100% dinâmico: extrai dados exclusivamente da legenda do lojista (zero dados mockados/fixos)
  */
-function generateHeuristicAttributes(imageUrl: string, caption?: string): VisionAnalysisResult {
+function generateHeuristicAttributes(
+  imageUrl: string,
+  caption?: string,
+  storeNiches?: string[],
+  businessType?: 'products' | 'services' | 'hybrid'
+): VisionAnalysisResult {
   const text = (caption || '').trim();
   const lowerText = text.toLowerCase();
 
@@ -291,12 +322,12 @@ function generateHeuristicAttributes(imageUrl: string, caption?: string): Vision
     }
   }
 
-  // 3. CATEGORIA REAL: apenas se mencionada na legenda do lojista
-  let categoria = 'Geral';
+  // 3. CATEGORIA REAL: prioriza nicho da loja ou termos específicos da legenda
+  const isServiceDetected = businessType === 'services' || /\b(corte|barba|cabelo|manicure|pedicure|unha|unhas|lash|sobrancelha|estetica|estética|detailing|polimento|lavagem|agendamento|serviço|servico)\b/i.test(lowerText);
+  let categoria = storeNiches && storeNiches.length > 0 ? storeNiches[0] : (isServiceDetected ? 'Serviço' : 'Geral');
   let subcategoria: string | undefined = undefined;
-  const isService = /\b(corte|barba|cabelo|manicure|pedicure|unha|unhas|lash|sobrancelha|estetica|estética|detailing|polimento|lavagem|agendamento|serviço|servico)\b/i.test(lowerText);
 
-  if (isService) {
+  if (isServiceDetected) {
     categoria = 'Serviço';
   } else if (/\b(vestido|vestidos)\b/i.test(lowerText)) {
     categoria = 'Vestido';
@@ -325,7 +356,7 @@ function generateHeuristicAttributes(imageUrl: string, caption?: string): Vision
   }
 
   const attrs: ProductDynamicAttributes = {
-    tipo_item: isService ? 'servico' : 'produto',
+    tipo_item: isServiceDetected ? 'servico' : 'produto',
     categoria: categoria.toLowerCase(),
     subcategoria,
     cor_principal,

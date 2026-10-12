@@ -1,38 +1,39 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { CatalogConfig, CatalogTemplate } from '@/lib/catalog/types';
 import { getDefaultCatalog, TEMPLATES } from '@/lib/catalog/templates';
 import TemplateSelector from '@/components/catalog/TemplateSelector';
 import ProductManager from '@/components/catalog/ProductManager';
 import ThemeCustomizer from '@/components/catalog/ThemeCustomizer';
 import DiscountsAndShipping from '@/components/catalog/DiscountsAndShipping';
-import BioLinkShare from '@/components/catalog/BioLinkShare';
 import LivePhonePreview from '@/components/catalog/LivePhonePreview';
+import StoreInfoTab from '@/components/catalog/StoreInfoTab';
+import PaymentAndShippingTab from '@/components/catalog/PaymentAndShippingTab';
 import {
   Wand2,
   ShoppingBag,
   Palette,
   Percent,
-  Share2,
-  Save,
-  Check,
-  ExternalLink,
-  Eye,
-  EyeOff,
   Sparkles,
   ArrowLeft,
   Calendar,
-  Clock,
+  Store,
+  Smartphone,
+  CreditCard,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import IntelligentCatalogAutomator from '@/components/dashboard/IntelligentCatalogAutomator';
+import EasyOnboardingWizard from '@/components/onboarding/EasyOnboardingWizard';
 
-type ActiveTab = 'templates' | 'products' | 'theme' | 'discounts' | 'share';
+type ActiveTab = 'business' | 'templates' | 'products' | 'theme' | 'shipping_payment' | 'discounts' | 'info';
 
 export default function CatalogBuilderPage() {
+  const router = useRouter();
   const [config, setConfig] = useState<CatalogConfig>(getDefaultCatalog());
   const [hasChosenTemplate, setHasChosenTemplate] = useState<boolean>(true);
+  const [showOnboardingModal, setShowOnboardingModal] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>('products');
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -87,9 +88,19 @@ export default function CatalogBuilderPage() {
             (typeof window !== 'undefined' && localStorage.getItem('vitryne_template_chosen') === 'true')
           );
           setHasChosenTemplate(isChosen);
-          // Se o lojista já tiver escolhido o tipo, vai direto para a edição dos tópicos e produtos!
-          // Caso contrário, mostra a tela de escolha de templates.
-          setActiveTab(isChosen ? 'products' : 'templates');
+          if (!isChosen) {
+            setShowOnboardingModal(true);
+          }
+          // Se houver parâmetro na URL para aba específica
+          let initialActiveTab: ActiveTab = isChosen ? 'products' : 'templates';
+          if (typeof window !== 'undefined') {
+            const urlParams = new URLSearchParams(window.location.search);
+            const tabParam = urlParams.get('tab') as ActiveTab | null;
+            if (tabParam && ['business', 'info', 'templates', 'products', 'theme', 'shipping_payment', 'discounts'].includes(tabParam)) {
+              initialActiveTab = tabParam === 'info' ? 'business' : tabParam;
+            }
+          }
+          setActiveTab(initialActiveTab);
         }
       } catch (e) {
         console.error('Erro ao buscar catálogo da API, usando local:', e);
@@ -152,39 +163,57 @@ export default function CatalogBuilderPage() {
 
   const isServices = config.businessType === 'services';
 
-  // Abas: se já escolheu o tipo, mostra direto 'Serviços & Procedimentos' ou 'Tópicos & Produtos' como aba inicial
+  // Abas organizadas: Dados do Negócio, Cores & Visual, Pagamento e Frete, Descontos & Ofertas, Tópicos & Produtos
   const tabs = hasChosenTemplate
     ? [
-      {
-        id: 'products' as ActiveTab,
-        label: isServices ? 'Serviços & Procedimentos' : 'Tópicos & Produtos',
-        icon: isServices ? Calendar : ShoppingBag,
-        count: config.products?.length || 0,
-      },
-      { id: 'theme' as ActiveTab, label: 'Cores & Visual', icon: Palette },
-      {
-        id: 'discounts' as ActiveTab,
-        label: isServices ? 'Agendamento & Horários' : 'Descontos & Frete',
-        icon: isServices ? Clock : Percent,
-      },
-      { id: 'share' as ActiveTab, label: 'Link da Bio & QR Code', icon: Share2 },
-    ]
+        {
+          id: 'business' as ActiveTab,
+          label: 'Dados do Negócio',
+          icon: Store,
+        },
+        { id: 'theme' as ActiveTab, label: 'Cores & Visual', icon: Palette },
+        {
+          id: 'shipping_payment' as ActiveTab,
+          label: 'Pagamento e Frete',
+          icon: CreditCard,
+        },
+        {
+          id: 'discounts' as ActiveTab,
+          label: isServices ? 'Regras de Agendamento' : 'Descontos & Ofertas',
+          icon: Percent,
+        },
+        {
+          id: 'products' as ActiveTab,
+          label: isServices ? 'Serviços & Procedimentos' : 'Tópicos & Produtos',
+          icon: isServices ? Calendar : ShoppingBag,
+          count: config.products?.length || 0,
+        },
+      ]
     : [
-      { id: 'templates' as ActiveTab, label: '1. Escolher Tipo de Catálogo', icon: Wand2, count: 10 },
-      {
-        id: 'products' as ActiveTab,
-        label: isServices ? '2. Serviços & Procedimentos' : '2. Tópicos & Produtos',
-        icon: isServices ? Calendar : ShoppingBag,
-        count: config.products?.length || 0,
-      },
-      { id: 'theme' as ActiveTab, label: 'Cores & Visual', icon: Palette },
-      {
-        id: 'discounts' as ActiveTab,
-        label: isServices ? 'Agendamento & Horários' : 'Descontos & Frete',
-        icon: isServices ? Clock : Percent,
-      },
-      { id: 'share' as ActiveTab, label: 'Link da Bio & QR Code', icon: Share2 },
-    ];
+        { id: 'templates' as ActiveTab, label: '1. Modelo do Catálogo', icon: Wand2, count: 10 },
+        {
+          id: 'business' as ActiveTab,
+          label: '2. Dados do Negócio',
+          icon: Store,
+        },
+        { id: 'theme' as ActiveTab, label: '3. Cores & Visual', icon: Palette },
+        {
+          id: 'shipping_payment' as ActiveTab,
+          label: '4. Pagamento e Frete',
+          icon: CreditCard,
+        },
+        {
+          id: 'discounts' as ActiveTab,
+          label: isServices ? '5. Regras de Agendamento' : '5. Descontos & Ofertas',
+          icon: Percent,
+        },
+        {
+          id: 'products' as ActiveTab,
+          label: isServices ? '6. Serviços & Procedimentos' : '6. Tópicos & Produtos',
+          icon: isServices ? Calendar : ShoppingBag,
+          count: config.products?.length || 0,
+        },
+      ];
 
   if (loading) {
     return (
@@ -209,12 +238,25 @@ export default function CatalogBuilderPage() {
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Gerencie os tópicos, categorias e produtos da sua vitrine online, configure descontos e compartilhe na bio do Instagram.
+            Gerencie os dados da sua vitrine, fotos, tópicos e produtos, defina descontos e compartilhe na bio do Instagram.
           </p>
         </div>
 
         {/* Botões de Ação */}
         <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Assistente de Configuração / Onboarding (Oculto se já concluído) */}
+          {!hasChosenTemplate && (
+            <button
+              type="button"
+              onClick={() => setShowOnboardingModal(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-linear-to-r from-indigo-500/10 via-purple-500/10 to-indigo-500/10 hover:from-indigo-500/20 hover:to-purple-500/20 border border-indigo-200 text-xs font-bold text-indigo-700 transition-all shadow-xs"
+              title="Abrir Assistente de Configuração / Onboarding"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Assistente / Onboarding</span>
+            </button>
+          )}
+
           {/* Seletor rápido para trocar o tipo de catálogo */}
           {hasChosenTemplate && (
             <button
@@ -235,40 +277,71 @@ export default function CatalogBuilderPage() {
               </span>
             </button>
           )}
+
+          {/* Alerta de Pendências (Vizinho ao Tipo no topo) */}
+          <IntelligentCatalogAutomator variant="header-button" />
+        </div>
+      </div>
+
+      {/* Banner de Resumo & Status da Loja */}
+      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5 min-w-0">
+          <div className="w-11 h-11 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-lg shadow-md shadow-indigo-600/20 shrink-0">
+            {config.storeName ? config.storeName.charAt(0).toUpperCase() : <Store className="w-5 h-5" />}
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="font-heading font-black text-slate-900 text-base sm:text-lg truncate">
+                {config.storeName || 'Minha Loja'}
+              </h2>
+              <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                isServices
+                  ? 'bg-purple-50 text-purple-700 border-purple-200'
+                  : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+              }`}>
+                {isServices ? 'Serviços & Procedimentos' : 'Produtos Físicos'}
+              </span>
+              {config.niches && config.niches.length > 0 && (
+                <span className="hidden sm:inline-flex text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">
+                  {config.niches[0]} {config.niches.length > 1 ? `+${config.niches.length - 1}` : ''}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2.5 text-xs text-slate-500 mt-1 flex-wrap font-medium">
+              <span className="font-mono text-indigo-700 font-bold">
+                vitryne.com.br/c/{config.slug || 'minha-loja'}
+              </span>
+              <span>•</span>
+              <span className="flex items-center gap-1 text-slate-600">
+                <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
+                {config.whatsappProfessional || config.whatsapp ? (
+                  <span className="font-semibold text-slate-800">
+                    {config.whatsappProfessional || config.whatsapp}
+                  </span>
+                ) : (
+                  <span className="text-amber-600 font-medium">WhatsApp não informado</span>
+                )}
+              </span>
+              <span>•</span>
+              <span>
+                <strong>{config.products?.length || 0}</strong> {config.products?.length === 1 ? 'item cadastrado' : 'itens cadastrados'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 w-full md:w-auto shrink-0">
           <button
             type="button"
-            onClick={() => setShowPreview(!showPreview)}
-            className="hidden xl:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+            onClick={() => setActiveTab('business')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all border ${
+              activeTab === 'business' || activeTab === 'info'
+                ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+            }`}
           >
-            {showPreview ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-            <span>{showPreview ? 'Ocultar Preview' : 'Ver Preview'}</span>
+            Editar Dados do Negócio
           </button>
-
-          <a
-            href={`/${config.slug || 'minha-loja'}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-          >
-            <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
-            <span>Ver Vitrine Pública</span>
-          </a>
-
-          <Button
-            variant="primary"
-            size="sm"
-            isLoading={isSaving}
-            leftIcon={
-              saveSuccess ? (
-                <Check className="w-3.5 h-3.5 text-emerald-300 stroke-[3]" />
-              ) : (
-                <Save className="w-3.5 h-3.5" />
-              )
-            }
-            onClick={() => handleSave()}
-          >
-            {saveSuccess ? 'Salvo!' : 'Salvar Alterações'}
-          </Button>
         </div>
       </div>
 
@@ -307,6 +380,36 @@ export default function CatalogBuilderPage() {
       <div className="flex flex-col xl:flex-row items-start gap-8">
         {/* Lado Esquerdo: Área de Edição da Aba Ativa */}
         <div className="flex-1 w-full min-w-0">
+          {/* Aba 1: Dados do Negócio */}
+          {(activeTab === 'business' || activeTab === 'info') && (
+            <StoreInfoTab
+              config={config}
+              onChangeConfig={(newConfig) => {
+                setConfig(newConfig);
+                handleSave(newConfig);
+              }}
+              onSave={(newConfig) => {
+                if (newConfig) setConfig(newConfig);
+                handleSave(newConfig || config);
+              }}
+            />
+          )}
+
+          {/* Aba 4: Pagamento e Frete */}
+          {activeTab === 'shipping_payment' && (
+            <PaymentAndShippingTab
+              config={config}
+              onChangeConfig={(newConfig) => {
+                setConfig(newConfig);
+                handleSave(newConfig);
+              }}
+              onSave={(newConfig) => {
+                if (newConfig) setConfig(newConfig);
+                handleSave(newConfig || config);
+              }}
+            />
+          )}
+
           {activeTab === 'templates' && (
             <div className="space-y-4">
               {hasChosenTemplate && (
@@ -344,9 +447,6 @@ export default function CatalogBuilderPage() {
 
           {activeTab === 'products' && (
             <div className="space-y-6">
-              {/* Sincronização Inteligente do Catálogo & Central de Pendências */}
-              <IntelligentCatalogAutomator />
-
               <ProductManager
                 businessType={config.businessType}
                 schedulingConfig={config.scheduling || config.schedulingConfig}
@@ -417,7 +517,7 @@ export default function CatalogBuilderPage() {
             />
           )}
 
-          {activeTab === 'share' && <BioLinkShare config={config} />}
+
         </div>
 
         {/* Lado Direito: Preview Celular Interativo */}
@@ -427,6 +527,26 @@ export default function CatalogBuilderPage() {
           </div>
         )}
       </div>
+
+      {/* Modal do Assistente de Onboarding */}
+      {showOnboardingModal && (
+        <EasyOnboardingWizard
+          initialConfig={config}
+          isModal={true}
+          onCancel={() => setShowOnboardingModal(false)}
+          onFinish={(completedConfig, destination) => {
+            setConfig(completedConfig);
+            setHasChosenTemplate(true);
+            handleSave(completedConfig);
+            setShowOnboardingModal(false);
+            if (destination === 'dashboard') {
+              router.push('/dashboard');
+            } else {
+              setActiveTab('products');
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -16,7 +16,7 @@ module.exports = {
       },
       fontFamily: {
         sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
-        heading: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        heading: ['Outfit', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
         serif: ['"Playfair Display"', '"Cormorant Garamond"', 'Georgia', 'serif'],
         mono: ['JetBrains Mono', 'monospace'],
       },

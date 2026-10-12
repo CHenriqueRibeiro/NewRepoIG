@@ -37,6 +37,8 @@ import {
   Users,
   CreditCard,
   FileSpreadsheet,
+  Search,
+  Minus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import BulkImportModal from './BulkImportModal';
@@ -297,6 +299,10 @@ export default function ProductManager({
   // Tópico atualmente selecionado para visualização/cadastro
   const [selectedTopic, setSelectedTopic] = useState<string>('ALL');
 
+  // Filtros de busca e status na lista de produtos
+  const [productSearchTerm, setProductSearchTerm] = useState('');
+  const [stockStatusFilter, setStockStatusFilter] = useState<'all' | 'available' | 'sold_out' | 'badged'>('all');
+
   // Modais de controle
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
@@ -487,6 +493,43 @@ export default function ProductManager({
 
     return list;
   }, [products, selectedTopic, pinBadgedProductsToTop]);
+
+  // Produtos após aplicação de busca e filtro de status/badge
+  const searchedProducts = useMemo(() => {
+    return filteredProducts.filter((p) => {
+      if (productSearchTerm.trim()) {
+        const term = productSearchTerm.toLowerCase().trim();
+        const matchName = (p.name || '').toLowerCase().includes(term);
+        const matchCategory = (p.category || '').toLowerCase().includes(term);
+        const matchDesc = (p.description || '').toLowerCase().includes(term);
+        const matchBadge = (p.badge || '').toLowerCase().includes(term);
+        if (!matchName && !matchCategory && !matchDesc && !matchBadge) return false;
+      }
+
+      if (stockStatusFilter === 'all') return true;
+
+      const isInfinite =
+        p.isInfiniteStock ||
+        outOfStockBehavior === 'infinite' ||
+        p.outOfStockAction === 'infinite';
+      const isSoldOut = isInfinite
+        ? false
+        : p.isUniquePiece
+        ? p.stock !== undefined && p.stock <= 0
+        : (p.stock || 0) <= 0;
+
+      if (stockStatusFilter === 'available') {
+        return !isSoldOut;
+      }
+      if (stockStatusFilter === 'sold_out') {
+        return isSoldOut;
+      }
+      if (stockStatusFilter === 'badged') {
+        return Boolean(p.badge && p.badge.trim().length > 0);
+      }
+      return true;
+    });
+  }, [filteredProducts, productSearchTerm, stockStatusFilter, outOfStockBehavior]);
 
   // Produtos disponíveis para indicação na edição (excluindo a própria peça se estiver editando)
   const availableProductsToRecommend = useMemo(() => {
@@ -882,6 +925,20 @@ export default function ProductManager({
     }
   };
 
+  const handleQuickStockChange = (productId: string, delta: number) => {
+    const index = products.findIndex((p) => p.id === productId);
+    if (index === -1) return;
+    const target = products[index];
+    const currentStock = target.stock !== undefined ? target.stock : 0;
+    const nextStock = Math.max(0, currentStock + delta);
+    const updated = [...products];
+    updated[index] = {
+      ...target,
+      stock: nextStock,
+    };
+    onChangeProducts(updated);
+  };
+
   const handleDuplicateProduct = (indexInAll: number) => {
     const original = products[indexInAll];
     const duplicated: ProductItem = {
@@ -1107,7 +1164,82 @@ export default function ProductManager({
         </div>
       </div>
 
-      {/* 2. Lista de Produtos Filtrada pelo Tópico */}
+      {/* Barra de Busca e Filtros Rápidos */}
+      <div className="bg-slate-50/80 border border-slate-200 rounded-2xl p-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="text"
+            value={productSearchTerm}
+            onChange={(e) => setProductSearchTerm(e.target.value)}
+            placeholder={
+              isServicesCatalog
+                ? "Buscar serviço por nome, categoria ou descrição..."
+                : "Buscar produto por nome, categoria ou tag..."
+            }
+            className="w-full pl-9 pr-8 py-2 text-xs bg-white rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400"
+          />
+          {productSearchTerm && (
+            <button
+              type="button"
+              onClick={() => setProductSearchTerm('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+
+        {/* Filtros de Status */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 sm:pb-0 shrink-0">
+          <button
+            type="button"
+            onClick={() => setStockStatusFilter('all')}
+            className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
+              stockStatusFilter === 'all'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+            }`}
+          >
+            Todos ({filteredProducts.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setStockStatusFilter('available')}
+            className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
+              stockStatusFilter === 'available'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'bg-white text-emerald-700 hover:bg-emerald-50 border border-emerald-200'
+            }`}
+          >
+            Em Estoque
+          </button>
+          <button
+            type="button"
+            onClick={() => setStockStatusFilter('sold_out')}
+            className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
+              stockStatusFilter === 'sold_out'
+                ? 'bg-rose-600 text-white shadow-xs'
+                : 'bg-white text-rose-700 hover:bg-rose-50 border border-rose-200'
+            }`}
+          >
+            Esgotados
+          </button>
+          <button
+            type="button"
+            onClick={() => setStockStatusFilter('badged')}
+            className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
+              stockStatusFilter === 'badged'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-white text-amber-700 hover:bg-amber-50 border border-amber-200'
+            }`}
+          >
+            Com Destaque
+          </button>
+        </div>
+      </div>
+
+      {/* 2. Lista de Produtos Filtrada pelo Tópico e Busca */}
       {filteredProducts.length === 0 ? (
         <div className="p-12 text-center bg-white rounded-2xl border border-dashed border-slate-300 space-y-4">
           <div className="w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto">
@@ -1147,9 +1279,33 @@ export default function ProductManager({
               : `Cadastrar Peça em "${selectedTopic}"`}
           </Button>
         </div>
+      ) : searchedProducts.length === 0 ? (
+        <div className="p-10 text-center bg-white rounded-2xl border border-dashed border-slate-300 space-y-3">
+          <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center mx-auto">
+            <Search className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-900 text-sm">Nenhum item corresponde à busca</h3>
+            <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+              {productSearchTerm
+                ? `Nenhum resultado para "${productSearchTerm}". Tente outro termo ou limpe os filtros.`
+                : 'Nenhum item encontrado com o status selecionado.'}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setProductSearchTerm('');
+              setStockStatusFilter('all');
+            }}
+            className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 underline"
+          >
+            Limpar busca e filtros
+          </button>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredProducts.map((product) => {
+          {searchedProducts.map((product) => {
             const originalIndex = products.findIndex((p) => p.id === product.id);
             const hasDiscount =
               product.discountPrice && product.discountPrice < product.price;
@@ -1370,35 +1526,64 @@ export default function ProductManager({
                 </div>
 
                 {/* Ações */}
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => handleDuplicateProduct(originalIndex)}
-                    title="Duplicar Produto"
-                    className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors text-xs flex items-center gap-1"
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">Duplicar</span>
-                  </button>
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1.5 flex-wrap">
+                  {/* Stepper Rápido de Estoque para Peças Físicas */}
+                  {!(product.isService || isServicesCatalog) && !isInfinite && !product.isUniquePiece ? (
+                    <div className="flex items-center gap-1 bg-slate-50 border border-slate-200/90 rounded-lg p-0.5">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase px-1">Estoque:</span>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickStockChange(product.id, -1)}
+                        disabled={(product.stock || 0) <= 0}
+                        title="Diminuir estoque (-1)"
+                        className="w-5 h-5 rounded bg-white hover:bg-slate-100 text-slate-700 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center border border-slate-200 shadow-2xs transition-colors"
+                      >
+                        <Minus className="w-2.5 h-2.5" />
+                      </button>
+                      <span className="px-1.5 text-xs font-bold text-slate-900 min-w-5 text-center">
+                        {product.stock || 0}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickStockChange(product.id, 1)}
+                        title="Aumentar estoque (+1)"
+                        className="w-5 h-5 rounded bg-white hover:bg-slate-100 text-slate-700 flex items-center justify-center border border-slate-200 shadow-2xs transition-colors"
+                      >
+                        <Plus className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
+                  ) : <div />}
 
-                  <button
-                    type="button"
-                    onClick={() => openEditModal(originalIndex)}
-                    title="Editar Produto"
-                    className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors text-xs font-medium flex items-center gap-1"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                    <span>Editar</span>
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleDuplicateProduct(originalIndex)}
+                      title="Duplicar Produto"
+                      className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors text-xs flex items-center gap-1"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Duplicar</span>
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteProduct(originalIndex)}
-                    title="Excluir Produto"
-                    className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors text-xs"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => openEditModal(originalIndex)}
+                      title="Editar Produto"
+                      className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors text-xs font-medium flex items-center gap-1"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                      <span>Editar</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteProduct(originalIndex)}
+                      title="Excluir Produto"
+                      className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors text-xs"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             );

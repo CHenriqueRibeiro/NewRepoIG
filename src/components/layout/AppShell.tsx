@@ -71,7 +71,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     pathname.startsWith('/dashboard') ||
     pathname.startsWith('/settings') ||
     pathname.startsWith('/planos') ||
-    pathname === '/catalogo';
+    pathname.startsWith('/modulos') ||
+    pathname.startsWith('/catalogo');
 
   // 1. Standalone Checkout Route (Direct Webview for Customers)
   if (pathname.startsWith('/checkout')) {

@@ -169,12 +169,18 @@ export async function processIncomingInstagramMedia(
     }
   }
 
-  // 4. ANÁLISE DE IMAGEM VIA OPENAI VISION (ATRIBUTOS DINÂMICOS EM JSON)
-  console.log(`🧠 [Vision] Analisando imagem e extraindo atributos estruturados...`);
+  // 4. ANÁLISE DE IMAGEM VIA OPENAI / GEMINI VISION (GUIADA PELOS NICHOS DA LOJA)
+  const storeCatalog = getServerCatalog(catalogSlug || storeId);
+  const storeNiches = storeCatalog.niches && storeCatalog.niches.length > 0 ? storeCatalog.niches : undefined;
+  const storeBusinessType = storeCatalog.businessType || 'products';
+
+  console.log(`🧠 [Vision] Analisando imagem guiada pelos nichos da loja: ${storeNiches?.join(', ') || 'Geral'} (${storeBusinessType})...`);
   const visionResult = await analyzeMediaWithVision({
     imageUrl: persistedImageUrl || visualAnalysisTargetUrl,
     caption,
     apiKey: openAiApiKey,
+    storeNiches,
+    businessType: storeBusinessType,
   });
 
   console.log(`✨ [Vision Atributos Extraídos]:`, JSON.stringify(visionResult.attributes, null, 2));

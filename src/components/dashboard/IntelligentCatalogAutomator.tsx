@@ -80,7 +80,13 @@ interface PendingItemFormData {
   description: string;
 }
 
-export default function IntelligentCatalogAutomator() {
+interface IntelligentCatalogAutomatorProps {
+  variant?: 'full' | 'header-button';
+}
+
+export default function IntelligentCatalogAutomator({
+  variant = 'full',
+}: IntelligentCatalogAutomatorProps = {}) {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
@@ -327,10 +333,30 @@ export default function IntelligentCatalogAutomator() {
 
   return (
     <div className="w-full">
-      {/* ======================================================== */}
-      {/* 1. NOTIFICAÇÃO DE PENDÊNCIA (SE HOUVER AÇÃO NECESSÁRIA)   */}
-      {/* ======================================================== */}
-      {totalPendencias > 0 ? (
+      {variant === 'header-button' ? (
+        <button
+          type="button"
+          onClick={() => setIsModalOpen(true)}
+          className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-all shadow-xs ${
+            totalPendencias > 0
+              ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-900 border-amber-300 ring-2 ring-amber-500/10'
+              : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300'
+          }`}
+          title={totalPendencias > 0 ? `${totalPendencias} pendências aguardando você` : 'Nenhuma pendência no momento'}
+        >
+          {totalPendencias > 0 ? (
+            <>
+              <Bell className="w-3.5 h-3.5 text-amber-600 animate-bounce" />
+              <span>Pendências ({totalPendencias})</span>
+            </>
+          ) : (
+            <>
+              <Check className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Pendências (0)</span>
+            </>
+          )}
+        </button>
+      ) : totalPendencias > 0 ? (
         <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-500/10 border border-amber-400/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs animate-in fade-in slide-in-from-top-2">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-700 flex items-center justify-center shrink-0">

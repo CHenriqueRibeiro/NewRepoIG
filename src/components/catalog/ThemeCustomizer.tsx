@@ -1,15 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { CatalogConfig, CatalogTheme, isColorDark } from '@/lib/catalog/types';
 import {
   Palette,
   Type,
   LayoutGrid,
-  Store,
   Sparkles,
   Check,
-  AlertCircle,
 } from 'lucide-react';
 import { TYPOGRAPHY_PRESETS, getTypographyPreset } from '@/lib/catalog/typography';
 
@@ -206,100 +204,11 @@ export default function ThemeCustomizer({
 }: ThemeCustomizerProps) {
   const { theme } = config;
 
-  const [nameValidation, setNameValidation] = useState<{
-    isChecking: boolean;
-    isDuplicate: boolean;
-    suggestion: string;
-    message?: string;
-  }>({ isChecking: false, isDuplicate: false, suggestion: '' });
-
-  const [slugValidation, setSlugValidation] = useState<{
-    isChecking: boolean;
-    isDuplicate: boolean;
-    isValid: boolean;
-    suggestion: string;
-    message?: string;
-  }>({ isChecking: false, isDuplicate: false, isValid: false, suggestion: '' });
-
-  // Preenchimento automático com o nome do perfil conectado se estiver genérico ("Minha Loja")
-  useEffect(() => {
-    async function syncProfileName() {
-      if (
-        !config.storeName ||
-        config.storeName === 'Minha Loja' ||
-        !config.slug ||
-        config.slug === 'minha-loja'
-      ) {
-        try {
-          const res = await fetch('/api/auth/instagram/status');
-          const data = await res.json();
-          if (data?.connected && data?.account) {
-            const profileName = data.account.name || data.account.username || 'Quota';
-            const baseSlug = (data.account.username || profileName)
-              .toLowerCase()
-              .replace(/^@/, '')
-              .replace(/[^a-z0-9-_]/g, '-');
-
-            // Valida duplicidade do slug gerado pelo perfil
-            const valRes = await fetch(
-              `/api/catalog/validate-slug?name=${encodeURIComponent(profileName)}&slug=${encodeURIComponent(baseSlug)}&currentSlug=${config.slug || ''}`
-            );
-            const valData = await valRes.json();
-            const finalSlug = valData.suggestedSlug || baseSlug;
-            const finalName = valData.suggestedName || profileName;
-
-            onChangeConfig({
-              ...config,
-              storeName: config.storeName === 'Minha Loja' || !config.storeName ? finalName : config.storeName,
-              slug: config.slug === 'minha-loja' || !config.slug ? finalSlug : config.slug,
-            });
-          }
-        } catch (e) {
-          console.warn('[ThemeCustomizer] Erro ao sincronizar nome do perfil:', e);
-        }
-      }
-    }
-    syncProfileName();
-  }, []);
-
   const updateStoreField = (field: keyof CatalogConfig, value: any) => {
     onChangeConfig({
       ...config,
       [field]: value,
     });
-  };
-
-  const validateField = async (type: 'name' | 'slug', value: string) => {
-    try {
-      const targetName = type === 'name' ? value : config.storeName;
-      const targetSlug = type === 'slug' ? value : config.slug;
-
-      const res = await fetch(
-        `/api/catalog/validate-slug?name=${encodeURIComponent(targetName)}&slug=${encodeURIComponent(targetSlug)}&currentSlug=${config.slug}`
-      );
-      const data = await res.json();
-
-      if (type === 'name') {
-        setNameValidation({
-          isChecking: false,
-          isDuplicate: Boolean(data.isNameDuplicate),
-          suggestion: data.suggestedName || '',
-          message: data.message,
-        });
-      }
-
-      if (type === 'slug' || type === 'name') {
-        setSlugValidation({
-          isChecking: false,
-          isDuplicate: Boolean(data.isSlugDuplicate),
-          isValid: Boolean(data.isValid),
-          suggestion: data.suggestedSlug || '',
-          message: data.message,
-        });
-      }
-    } catch (e) {
-      console.warn('[Validation error]', e);
-    }
   };
 
   const updateThemeField = (field: keyof CatalogTheme, value: any) => {
@@ -344,139 +253,51 @@ export default function ThemeCustomizer({
 
   return (
     <div className="space-y-8">
-      {/* 1. Identidade da Loja */}
+      {/* 1. Mensagem de Boas-Vindas no Topo da Vitrine */}
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-5">
-        <h3 className="font-bold text-base text-slate-900 flex items-center gap-2 pb-3 border-b border-slate-100">
-          <Store className="w-4 h-4 text-indigo-600" />
-          <span>Informações Principais da Loja</span>
-        </h3>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Nome da Loja (Perfil)
-            </label>
-            <input
-              type="text"
-              value={config.storeName}
-              onChange={(e) => {
-                updateStoreField('storeName', e.target.value);
-                if (nameValidation.isDuplicate) {
-                  setNameValidation((prev) => ({ ...prev, isDuplicate: false }));
-                }
-              }}
-              onBlur={(e) => validateField('name', e.target.value)}
-              className={`w-full px-3.5 py-2.5 rounded-xl border text-sm focus:ring-2 transition-all ${
-                nameValidation.isDuplicate
-                  ? 'border-amber-400 bg-amber-50/20 focus:ring-amber-500/30'
-                  : 'border-slate-300 focus:ring-indigo-500/30'
-              }`}
-              placeholder="Ex: Nome da sua loja"
-            />
-            {nameValidation.isDuplicate && (
-              <div className="mt-2 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-center justify-between gap-2 animate-fade-in">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span>
-                    Já existe outro perfil com este nome. Sugerimos <strong>{nameValidation.suggestion}</strong>.
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    updateStoreField('storeName', nameValidation.suggestion);
-                    setNameValidation({ isChecking: false, isDuplicate: false, suggestion: '' });
-                  }}
-                  className="px-2.5 py-1 rounded-lg bg-amber-200 hover:bg-amber-300 font-bold text-amber-950 text-xs cursor-pointer shrink-0 transition-colors"
-                >
-                  Usar
-                </button>
-              </div>
-            )}
+        <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+          <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+            <Sparkles className="w-4 h-4" />
           </div>
-
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Link Personalizado / Slug
-            </label>
-            <div
-              className={`flex rounded-xl border overflow-hidden focus-within:ring-2 transition-all ${
-                slugValidation.isDuplicate
-                  ? 'border-amber-400 bg-amber-50/20 focus-within:ring-amber-500/30'
-                  : 'border-slate-300 focus-within:ring-indigo-500/30'
-              }`}
-            >
-              <span className="bg-slate-100 px-3 py-2.5 text-xs text-slate-500 font-mono flex items-center shrink-0">
-                vitryne.com/
-              </span>
-              <input
-                type="text"
-                value={config.slug}
-                onChange={(e) => {
-                  updateStoreField(
-                    'slug',
-                    e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, '-')
-                  );
-                  setSlugValidation((prev) => ({ ...prev, isValid: false, isDuplicate: false }));
-                }}
-                onBlur={(e) => validateField('slug', e.target.value)}
-                className="w-full px-2.5 py-2.5 text-sm border-0 focus:outline-hidden font-mono"
-                placeholder="nome-do-perfil"
-              />
-            </div>
-            {slugValidation.isDuplicate && (
-              <div className="mt-2 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-center justify-between gap-2 animate-fade-in">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span>
-                    Link já em uso. Sugerimos <strong>vitryne.com/{slugValidation.suggestion}</strong>.
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    updateStoreField('slug', slugValidation.suggestion);
-                    setSlugValidation({ isChecking: false, isDuplicate: false, isValid: true, suggestion: '' });
-                  }}
-                  className="px-2.5 py-1 rounded-lg bg-amber-200 hover:bg-amber-300 font-bold text-amber-950 text-xs cursor-pointer shrink-0 transition-colors"
-                >
-                  Usar
-                </button>
-              </div>
-            )}
-            {slugValidation.isValid && !slugValidation.isDuplicate && (
-              <p className="mt-1.5 text-[11px] text-emerald-600 font-medium flex items-center gap-1">
-                <Check className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Link exclusivo disponível</span>
-              </p>
-            )}
+            <h3 className="font-bold text-base text-slate-900">
+              Mensagem de Boas-Vindas no Topo da Vitrine
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Destaque seu diferencial e incentive seus clientes logo na entrada do catálogo
+            </p>
           </div>
         </div>
 
-        {/* Mensagem do Topo do Catálogo */}
-        <div className="pt-4 border-t border-slate-100 space-y-4">
-          <div className="flex items-center justify-between">
-            <h4 className="font-bold text-xs text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-              <span>Mensagem de Boas-Vindas (Topo do Catálogo)</span>
-            </h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="sm:col-span-2 space-y-1">
+            <label className="block text-xs font-semibold text-slate-700">
+              Tagline Superior (Em caixa alta)
+            </label>
+            <input
+              type="text"
+              value={config.heroTagline || ''}
+              onChange={(e) => updateStoreField('heroTagline', e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500/30 font-semibold"
+              placeholder="Ex: COLEÇÃO DE VERÃO, SEMIJOIAS FINAS"
+            />
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+          <div className="sm:col-span-2 space-y-1">
+            <label className="block text-xs font-semibold text-slate-700">
               Título Principal
             </label>
             <input
               type="text"
               value={config.heroTitle || ''}
               onChange={(e) => updateStoreField('heroTitle', e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500/30"
-              placeholder="Ex: As peças certas para você"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500/30 font-bold"
+              placeholder="Ex: As peças certas para você brilhar"
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+          <div className="sm:col-span-2 space-y-1">
+            <label className="block text-xs font-semibold text-slate-700">
               Subtítulo Descritivo
             </label>
             <input
@@ -484,7 +305,7 @@ export default function ThemeCustomizer({
               value={config.heroSubtitle || ''}
               onChange={(e) => updateStoreField('heroSubtitle', e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500/30"
-              placeholder="Ex: Escolha seus produtos e finalize seu pedido com total facilidade."
+              placeholder="Ex: Escolha seus produtos favoritos e finalize com segurança em poucos cliques direto pelo WhatsApp."
             />
           </div>
         </div>
@@ -673,11 +494,10 @@ export default function ThemeCustomizer({
                       },
                     });
                   }}
-                  className={`p-3 rounded-xl border text-left transition-all relative flex flex-col justify-between ${
-                    isCurrent
+                  className={`p-3 rounded-xl border text-left transition-all relative flex flex-col justify-between ${isCurrent
                       ? 'border-indigo-600 ring-2 ring-indigo-600/20 shadow-xs'
                       : 'border-slate-200 hover:border-slate-300 hover:shadow-xs'
-                  }`}
+                    }`}
                   style={{ backgroundColor: preset.bg }}
                 >
                   <div className="flex items-center justify-between gap-2 mb-2">
@@ -806,11 +626,10 @@ export default function ThemeCustomizer({
               <div
                 key={preset.id}
                 onClick={() => handleSelectTypography(preset.id)}
-                className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between gap-3 relative ${
-                  isSelected
+                className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between gap-3 relative ${isSelected
                     ? 'border-indigo-600 bg-indigo-50/20 shadow-md ring-2 ring-indigo-600/10'
                     : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/50'
-                }`}
+                  }`}
               >
                 {/* Header do Card com Segmento */}
                 <div className="flex items-start justify-between gap-2">
@@ -863,37 +682,77 @@ export default function ThemeCustomizer({
           })}
         </div>
 
-        {/* Formato de Visualização dos Produtos */}
-        <div className="pt-6 border-t border-slate-100">
-          <label className="block text-xs font-semibold text-slate-800 mb-2 flex items-center gap-1.5">
-            <LayoutGrid className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Disposição dos Produtos no Celular</span>
-          </label>
-          <div className="grid grid-cols-2 gap-3 max-w-md">
+        {/* Formato de Exibição dos Produtos */}
+        <div className="pt-6 border-t border-slate-100 space-y-3">
+          <div>
+            <label className="block text-sm font-bold text-slate-900 flex items-center gap-2">
+              <LayoutGrid className="w-4 h-4 text-indigo-600" />
+              <span>Formato de Exibição dos Produtos (Celular)</span>
+            </label>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Escolha como os itens aparecem na tela para os clientes. Veja a mudança em tempo real no celular ao lado:
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Opção 1: 2 por linha */}
             <button
               type="button"
               onClick={() => updateThemeField('layoutStyle', 'grid-2')}
-              className={`py-2.5 px-3 rounded-xl border text-xs font-medium text-center transition-all ${
-                theme.layoutStyle === 'grid-2'
-                  ? 'border-indigo-600 bg-indigo-50 text-indigo-700 font-bold shadow-2xs'
-                  : 'border-slate-200 hover:bg-slate-50 text-slate-700'
-              }`}
+              className={`p-3.5 rounded-2xl border text-left transition-all ${theme.layoutStyle === 'grid-2' || !theme.layoutStyle
+                  ? 'border-indigo-600 bg-indigo-50/80 ring-2 ring-indigo-500/20 shadow-xs'
+                  : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/70 bg-white'
+                }`}
             >
-              <div className="text-sm font-semibold">Grade Dupla (2x2)</div>
-              <div className="text-[10px] text-slate-500">Mais produtos na tela</div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-bold text-slate-900">2 por Linha (Lado a Lado)</span>
+                {(theme.layoutStyle === 'grid-2' || !theme.layoutStyle) && (
+                  <Check className="w-3.5 h-3.5 text-indigo-600 stroke-[3]" />
+                )}
+              </div>
+              <p className="text-[11px] text-slate-500 leading-snug">
+                Padrão de e-commerce. Dois produtos por linha, cabem mais itens na tela do celular.
+              </p>
             </button>
 
+            {/* Opção 2: 1 por linha (Feed) */}
             <button
               type="button"
               onClick={() => updateThemeField('layoutStyle', 'feed-1')}
-              className={`py-2.5 px-3 rounded-xl border text-xs font-medium text-center transition-all ${
-                theme.layoutStyle === 'feed-1'
-                  ? 'border-indigo-600 bg-indigo-50 text-indigo-700 font-bold shadow-2xs'
-                  : 'border-slate-200 hover:bg-slate-50 text-slate-700'
-              }`}
+              className={`p-3.5 rounded-2xl border text-left transition-all ${theme.layoutStyle === 'feed-1'
+                  ? 'border-indigo-600 bg-indigo-50/80 ring-2 ring-indigo-500/20 shadow-xs'
+                  : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/70 bg-white'
+                }`}
             >
-              <div className="text-sm font-semibold">Feed Grande (1x1)</div>
-              <div className="text-[10px] text-slate-500">Fotos grandes estilo Instagram</div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-bold text-slate-900">1 por Linha (Feed Grande)</span>
+                {theme.layoutStyle === 'feed-1' && (
+                  <Check className="w-3.5 h-3.5 text-indigo-600 stroke-[3]" />
+                )}
+              </div>
+              <p className="text-[11px] text-slate-500 leading-snug">
+                Estilo feed do Instagram. Foto grande em largura total com máximo destaque aos detalhes.
+              </p>
+            </button>
+
+            {/* Opção 3: Lista Compacta */}
+            <button
+              type="button"
+              onClick={() => updateThemeField('layoutStyle', 'compact-list')}
+              className={`p-3.5 rounded-2xl border text-left transition-all ${theme.layoutStyle === 'compact-list'
+                  ? 'border-indigo-600 bg-indigo-50/80 ring-2 ring-indigo-500/20 shadow-xs'
+                  : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/70 bg-white'
+                }`}
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-bold text-slate-900">Lista em Linha (Compacto)</span>
+                {theme.layoutStyle === 'compact-list' && (
+                  <Check className="w-3.5 h-3.5 text-indigo-600 stroke-[3]" />
+                )}
+              </div>
+              <p className="text-[11px] text-slate-500 leading-snug">
+                Foto ao lado do nome e preço. Perfeito para cardápios rápidos, serviços e leitura ágil.
+              </p>
             </button>
           </div>
         </div>

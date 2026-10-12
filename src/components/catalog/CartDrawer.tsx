@@ -19,7 +19,14 @@ import {
   MapPin,
   Wallet,
 } from 'lucide-react';
-import { CatalogConfig, ProductItem, ShippingMethod, isProductInScheduledDiscount } from '@/lib/catalog/types';
+import {
+  CatalogConfig,
+  ProductItem,
+  ShippingMethod,
+  isProductInScheduledDiscount,
+  DEFAULT_DELIVERY_REGIONS,
+} from '@/lib/catalog/types';
+import { matchDeliveryRegionByCep } from '@/lib/shipping/engine';
 import { getMotoboyCutoffInfo, getUberFlashInfo } from '@/lib/catalog/shipping-helpers';
 import { formatWhatsAppBookingMessage } from '@/lib/catalog/service-helpers';
 import { PixPaymentModal } from './PixPaymentModal';
@@ -59,6 +66,7 @@ export default function CartDrawer({
   if (!isOpen) return null;
 
   const [isPixModalOpen, setIsPixModalOpen] = React.useState(false);
+  const [customerCep, setCustomerCep] = React.useState('');
 
   const isServicesCatalog = catalog.businessType === 'services';
 
@@ -70,6 +78,16 @@ export default function CartDrawer({
     pickupEnabled: true,
     freeShippingAbove: 299,
   };
+
+  const matchedRegion = React.useMemo(() => {
+    const raw = customerCep.replace(/\D/g, '');
+    if (raw.length < 8) return null;
+    const regions =
+      shipping.deliveryRegions && shipping.deliveryRegions.length > 0
+        ? shipping.deliveryRegions
+        : DEFAULT_DELIVERY_REGIONS;
+    return matchDeliveryRegionByCep(customerCep, regions);
+  }, [customerCep, shipping.deliveryRegions]);
 
   const isProductFlashPromo = (p: ProductItem) => {
     return isProductInScheduledDiscount(p, catalog?.globalScheduledDiscount);
@@ -170,6 +188,8 @@ export default function CartDrawer({
     ? 0
     : isFreeShipping
     ? 0
+    : matchedRegion
+    ? matchedRegion.valor
     : selectedShipping === 'motoboy'
     ? shipping.motoboyPrice || 0
     : shipping.sedexPrice || 0;
@@ -228,6 +248,8 @@ export default function CartDrawer({
     } else if (selectedShipping === 'uber_flash') {
       shippingLabel = `${uberFlash.label} (Corrida por conta do cliente)`;
       shippingDisclaimer = `🛵 *ATENÇÃO MOTO UBER / 99:* A corrida é solicitada e paga diretamente pelo cliente após aviso de pedido pronto.\n`;
+    } else if (matchedRegion) {
+      shippingLabel = `${matchedRegion.cidade} (${isFreeShipping ? 'Grátis' : `R$ ${shippingCost.toFixed(2)}`} • ${matchedRegion.prazo})`;
     } else if (selectedShipping === 'motoboy') {
       const cutoffExtra = motoboyCutoff.enabled
         ? ` [${motoboyCutoff.badgeText}: ${motoboyCutoff.isSameDay ? `pedido até às ${motoboyCutoff.cutoffTime}` : `pedido após às ${motoboyCutoff.cutoffTime}`}]`
@@ -235,6 +257,10 @@ export default function CartDrawer({
       shippingLabel = `Motoboy Express (${isFreeShipping ? 'Grátis' : `R$ ${shippingCost.toFixed(2)}`})${cutoffExtra}`;
     } else {
       shippingLabel = `Correios (${isFreeShipping ? 'Grátis' : `R$ ${shippingCost.toFixed(2)}`})`;
+    }
+
+    if (customerCep) {
+      shippingDisclaimer += `📍 *CEP Informado:* ${customerCep}${matchedRegion ? ` (${matchedRegion.cidade} - ${matchedRegion.prazo})` : ''}\n`;
     }
 
     const discountMsg =
@@ -440,10 +466,61 @@ export default function CartDrawer({
                 )}
               </div>
             ) : (
-              <div className="space-y-1.5">
-                <span className="font-bold text-stone-700 block text-[11px] uppercase tracking-wider">
-                  Forma de Entrega:
-                </span>
+              <div className="space-y-2">
+                {/* Cálculo de Frete por CEP */}
+                <div className="p-2.5 rounded-xl bg-white border border-stone-200/90 shadow-2xs space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10.5px] font-bold text-stone-700 flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-stone-500" />
+                      <span>Calcular Frete por CEP:</span>
+                    </span>
+                    {matchedRegion ? (
+                      <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded">
+                        Região Atendida
+                      </span>
+                    ) : (
+                      <span className="text-[9.5px] text-stone-400">Entrega Automática</span>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    value={customerCep}
+                    onChange={(e) => {
+                      let val = e.target.value.replace(/\D/g, '').slice(0, 8);
+                      if (val.length > 5) {
+                        val = `${val.slice(0, 5)}-${val.slice(5)}`;
+                      }
+                      setCustomerCep(val);
+                    }}
+                    placeholder="Informe seu CEP (ex: 01310-100)"
+                    maxLength={9}
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-stone-200 text-xs font-mono font-medium text-stone-900 focus:outline-none focus:border-stone-800 bg-stone-50/60"
+                  />
+                  {matchedRegion ? (
+                    <div className="text-[10.5px] p-2 rounded-lg bg-emerald-50 border border-emerald-200/80 text-emerald-950 flex items-start justify-between">
+                      <div>
+                        <p className="font-bold text-emerald-900">{matchedRegion.cidade} ({matchedRegion.uf})</p>
+                        <p className="text-[9.5px] text-emerald-700">{matchedRegion.prazo}</p>
+                      </div>
+                      <div className="font-bold text-right shrink-0">
+                        {isFreeShipping ? (
+                          <span className="text-emerald-700">Grátis</span>
+                        ) : (
+                          <span>R$ {matchedRegion.valor.toFixed(2).replace('.', ',')}</span>
+                        )}
+                      </div>
+                    </div>
+                  ) : customerCep.replace(/\D/g, '').length === 8 ? (
+                    <p className="text-[10px] text-stone-500 bg-stone-50 p-1.5 rounded border border-stone-200">
+                      CEP fora das regiões de entrega expressa direta. Aplicando taxa padrão de envio ({shipping.sedexEstimate || 'Correios'}).
+                    </p>
+                  ) : null}
+                </div>
+
+                <div className="space-y-1.5">
+                  <span className="font-bold text-stone-700 block text-[11px] uppercase tracking-wider">
+                    Forma de Entrega:
+                  </span>
                 <div className="grid grid-cols-2 gap-1.5">
                   {shipping.motoboyEnabled && (
                     <button
@@ -580,7 +657,8 @@ export default function CartDrawer({
                   </div>
                 )}
               </div>
-            )}
+            </div>
+          )}
 
             {/* Resumo de Valores */}
             <div className="space-y-1 pt-2 border-t border-stone-200">

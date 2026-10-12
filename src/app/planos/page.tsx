@@ -110,6 +110,8 @@ export default function PlansPage() {
   const [activePlan, setActivePlan] = useState<'iniciante' | 'profissional' | 'completo'>('iniciante');
   const [upgradedMessage, setUpgradedMessage] = useState<string | null>(null);
 
+  const currentPlan = PLANS.find((p) => p.id === activePlan) || PLANS[0];
+
   const handleSelectPlan = (planId: 'iniciante' | 'profissional' | 'completo') => {
     setActivePlan(planId);
     setUpgradedMessage(
@@ -143,13 +145,13 @@ export default function PlansPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-100">
           <div>
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">
-              Assinatura e Capacidade
+              Módulos &amp; Capacidade da Loja
             </span>
             <h1 className="font-heading font-black text-2xl sm:text-3xl text-slate-900 tracking-tight mt-1">
-              Plano Atual: <span className="text-indigo-600 capitalize">{activePlan}</span>
+              Plano Atual: <span className="text-indigo-600 capitalize">{currentPlan.name}</span>
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 mt-1">
-              Acompanhe o consumo da sua cota mensal de inteligência artificial, limite de catálogo e canais ativos.
+              Acompanhe seu plano vigente, o que está incluído, a quantidade usada de recursos e outros planos disponíveis.
             </p>
           </div>
 
@@ -270,16 +272,43 @@ export default function PlansPage() {
             </p>
           </div>
         </div>
+
+        {/* O que tem no plano atual */}
+        <div className="pt-5 border-t border-slate-100 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+            <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-indigo-600" />
+              O que está incluído no seu plano atual ({currentPlan.name}):
+            </span>
+            <span className="text-xs text-indigo-600 font-semibold">
+              {currentPlan.features.length} recursos ativos
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            {currentPlan.features.map((feature, idx) => (
+              <div
+                key={idx}
+                className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-50/70 border border-slate-200/60 text-xs text-slate-700"
+              >
+                <div className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                  <Check className="w-3 h-3 stroke-[3]" />
+                </div>
+                <span className="font-medium">{feature}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* Seção dos 3 Planos */}
+      {/* Seção dos Outros Planos e Upgrades */}
       <div className="space-y-6">
         <div>
           <h2 className="font-heading font-black text-xl sm:text-2xl text-slate-900 tracking-tight">
-            Escolha o Plano Ideal para a Sua Loja
+            Outros Planos e Módulos Disponíveis
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Compare com clareza os limites de produtos, capacidade de atendimento da IA e canais suportados.
+            Compare com clareza os limites de produtos, capacidade de atendimento da IA e canais suportados para fazer upgrade.
           </p>
         </div>
 

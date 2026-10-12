@@ -6,35 +6,23 @@ import {
   Shield,
   MessageCircle,
   Moon,
-  Info,
   Check,
-  CheckCircle2,
-  Server,
-  Cpu,
-  Zap,
   Sliders,
   HelpCircle,
-  ArrowRight,
+  Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Select } from '@/components/ui/Select';
 import { Tooltip } from '@/components/ui/Tooltip';
 
 export default function AISettingsPage() {
   const [savedFeedback, setSavedFeedback] = useState(false);
 
-  // Modos de Operação
+  // Modos de Atuação da IA
   const [aiMode, setAiMode] = useState<'noturno' | 'guarda_costas' | 'total_24_7' | 'personalizado'>('total_24_7');
   const [bodyguardMinutes, setBodyguardMinutes] = useState(15);
   const [nightStart, setNightStart] = useState('18:00');
   const [nightEnd, setNightEnd] = useState('08:00');
   const [weekendActive, setWeekendActive] = useState(true);
-
-  // Personalização da Comunicação
-  const [toneOfVoice, setToneOfVoice] = useState('consultivo');
-  const [pauseOnHumanRequest, setPauseOnHumanRequest] = useState(true);
-  const [attachSizingGuide, setAttachSizingGuide] = useState(true);
-  const [conversationalIntentDiscovery, setConversationalIntentDiscovery] = useState(true);
 
   const handleSavePreferences = () => {
     setSavedFeedback(true);
@@ -80,38 +68,7 @@ export default function AISettingsPage() {
 
 
 
-      {/* Banner de Status Operacional do Backend */}
-      <div className="p-4 sm:p-5 rounded-3xl bg-slate-900 text-white shadow-xl flex flex-col lg:flex-row lg:items-center justify-between gap-4 border border-slate-800">
-        <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-2xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center border border-indigo-500/30 shrink-0">
-            <Server className="w-5 h-5 text-indigo-400" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-heading font-bold text-sm text-white">
-                Motor de IA Conectado &amp; Operacional no Servidor
-              </span>
-              <span className="text-[10px] font-mono font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                Backend Ativo
-              </span>
-            </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Chaves de API, credenciais e modelos neurais são gerenciados com segurança via backend (.env).
-            </p>
-          </div>
-        </div>
 
-        <div className="flex items-center gap-2.5 shrink-0 text-xs text-slate-300">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700">
-            <Cpu className="w-3.5 h-3.5 text-indigo-400" />
-            <span className="font-mono text-[11px]">OpenAI Vision + Fast LLM</span>
-          </div>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700">
-            <Zap className="w-3.5 h-3.5 text-amber-400" />
-            <span className="font-mono text-[11px]">Latência ~42ms</span>
-          </div>
-        </div>
-      </div>
 
       {/* Grid Principal: Modos de Atuação (Destaque Principal) */}
       <div className="space-y-5">
@@ -477,150 +434,19 @@ export default function AISettingsPage() {
             </div>
           </div>
         )}
-      </div>
-
-      {/* Seção 2: Personalização & Regras de Atendimento */}
-      <div className="p-6 rounded-3xl bg-white border border-slate-200/90 shadow-xs space-y-5">
-        <div className="pb-3 border-b border-slate-100 flex items-center justify-between">
-          <div>
-            <h3 className="font-heading font-bold text-base text-slate-900">
-              Diretrizes de Conversação &amp; Tom de Voz
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Personalize como a IA fala e reage em momentos específicos do atendimento comercial.
-            </p>
-          </div>
-          <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-            Regras Ativas
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Tom de Voz */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-1.5">
-              <label className="text-xs font-bold text-slate-800 uppercase tracking-wider block">
-                Tom de Voz da IA:
-              </label>
-              <Tooltip
-                content="Ajusta o estilo do vocabulário, uso de emojis e nível de formalidade das mensagens que a IA envia para seus clientes no Instagram."
-                side="top"
-              >
-                <HelpCircle className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer" />
-              </Tooltip>
-            </div>
-            <Select
-              value={toneOfVoice}
-              onChange={(e: any) => setToneOfVoice(e.target.value)}
-              className="font-medium text-xs sm:text-sm py-2"
-            >
-              <option value="consultivo">Acolhedor &amp; Consultivo (Produtos &amp; Serviços • Recomendado)</option>
-              <option value="elegante">Elegante &amp; Sofisticado (Moda Fina &amp; Joias)</option>
-              <option value="descontraido">Jovem &amp; Descontraído (Streetwear, Acessórios &amp; Tendências)</option>
-            </Select>
-            <p className="text-[11px] text-slate-400">
-              Linguagem natural brasileira, empática e focada em ajudar na escolha e fechamento.
-            </p>
-          </div>
-
-          {/* Toggles de Regras com Tooltips Explicativos */}
-          <div className="space-y-3">
-            <span className="text-xs font-bold text-slate-800 uppercase tracking-wider block">
-              Gatilhos de Proteção Comercial:
-            </span>
-
-            {/* Toggle 1: Pausar com Humano */}
-            <label className="p-3.5 rounded-2xl border border-slate-200 hover:border-slate-300 bg-slate-50/50 flex items-start gap-3 cursor-pointer transition-all">
-              <input
-                type="checkbox"
-                checked={pauseOnHumanRequest}
-                onChange={(e) => setPauseOnHumanRequest(e.target.checked)}
-                className="w-4 h-4 rounded text-slate-900 focus:ring-slate-900 border-slate-300 mt-0.5"
-              />
-              <div className="space-y-0.5 flex-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-900">
-                    Transbordo Humano Imediato
-                  </span>
-                  <Tooltip
-                    content="Se o cliente expressar insatisfação, fizer reclamação de entrega ou pedir para falar com uma pessoa, a IA avisa cordialmente que um atendente assumirá e silencia para não atrapalhar."
-                    side="left"
-                  >
-                    <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
-                  </Tooltip>
-                </div>
-                <p className="text-[11px] text-slate-500 leading-relaxed">
-                  Pausa a IA automaticamente se o cliente solicitar atendente humano ou relatar problema.
-                </p>
-              </div>
-            </label>
-
-            {/* Toggle 2: Qualificação Consultiva */}
-            <label className="p-3.5 rounded-2xl border border-slate-200 hover:border-slate-300 bg-slate-50/50 flex items-start gap-3 cursor-pointer transition-all">
-              <input
-                type="checkbox"
-                checked={conversationalIntentDiscovery}
-                onChange={(e) => setConversationalIntentDiscovery(e.target.checked)}
-                className="w-4 h-4 rounded text-slate-900 focus:ring-slate-900 border-slate-300 mt-0.5"
-              />
-              <div className="space-y-0.5 flex-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-900">
-                    Qualificação Consultiva Humana
-                  </span>
-                  <Tooltip
-                    content="Evita despejar links genéricos quando o cliente apenas dá um 'Boa noite'. A IA pergunta gentilmente o que ele procura, descobre o modelo/tamanho e só então recomenda a peça ideal."
-                    side="left"
-                  >
-                    <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
-                  </Tooltip>
-                </div>
-                <p className="text-[11px] text-slate-500 leading-relaxed">
-                  Entende a intenção antes de mandar links em saudações simples (&quot;Boa noite&quot;, &quot;Oi&quot;).
-                </p>
-              </div>
-            </label>
-
-            {/* Toggle 3: Orientar Medidas */}
-            <label className="p-3.5 rounded-2xl border border-slate-200 hover:border-slate-300 bg-slate-50/50 flex items-start gap-3 cursor-pointer transition-all">
-              <input
-                type="checkbox"
-                checked={attachSizingGuide}
-                onChange={(e) => setAttachSizingGuide(e.target.checked)}
-                className="w-4 h-4 rounded text-slate-900 focus:ring-slate-900 border-slate-300 mt-0.5"
-              />
-              <div className="space-y-0.5 flex-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-900">
-                    Consultoria de Tamanho &amp; Estoque Real
-                  </span>
-                  <Tooltip
-                    content="Ao ser questionada sobre tamanhos (P, M, G, 40, etc.), a IA consulta o estoque da variante em tempo real e orienta se a peça veste a numeração do cliente."
-                    side="left"
-                  >
-                    <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
-                  </Tooltip>
-                </div>
-                <p className="text-[11px] text-slate-500 leading-relaxed">
-                  Verifica disponibilidade em tempo real e tira dúvidas sobre caimento e numerações.
-                </p>
-              </div>
-            </label>
-          </div>
-        </div>
-
         {/* Rodapé com Botão de Ação */}
-        <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-          <span className="text-xs text-slate-400">
-            Alterações entram em vigor instantaneamente em todas as interações.
+        <div className="pt-4 border-t border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-5 rounded-3xl border shadow-xs">
+          <span className="text-xs text-slate-500">
+            A estratégia selecionada entra em vigor instantaneamente em todas as interações.
           </span>
           <Button
             variant="primary"
             size="md"
             onClick={handleSavePreferences}
-            className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-6 shadow-sm"
+            className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-6 shadow-sm self-end sm:self-auto"
+            leftIcon={savedFeedback ? <Check className="w-4 h-4 stroke-[3]" /> : undefined}
           >
-            Salvar Preferências
+            {savedFeedback ? 'Salvo com Sucesso!' : 'Salvar Preferências'}
           </Button>
         </div>
       </div>

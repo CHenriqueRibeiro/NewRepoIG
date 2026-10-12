@@ -654,6 +654,21 @@ export default function PublicCatalogView({
 
   const typo = getTypographyPreset(theme.typographyPresetId, theme.fontFamily);
 
+  // Cores dinâmicas para Fundo da Página, Cards, Textos e Botões
+  const pageBg = theme.backgroundColor || '#FAF8F5';
+  const isBgDark = isColorDark(pageBg);
+  const pageTextColor = theme.textColor || (isBgDark ? '#F8FAFC' : '#1C1917');
+  const pageMutedColor = isBgDark ? '#94A3B8' : '#78716C';
+
+  const cardBg = theme.cardBackground || (isBgDark ? '#1E293B' : '#FFFFFF');
+  const isCardDark = isColorDark(cardBg);
+  const cardTextColor = isCardDark ? '#F8FAFC' : (theme.textColor || '#1C1917');
+  const cardMutedColor = isCardDark ? '#94A3B8' : '#78716C';
+  const cardBorderColor = isCardDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)';
+
+  const btnBg = theme.primaryColor || '#4F46E5';
+  const btnTextColor = theme.buttonTextColor || (isColorDark(btnBg) ? '#FFFFFF' : '#111827');
+
   // Determina cores dinâmicas para o Card do Topo (Hero)
   const defaultHeroBg = theme.backgroundColor && isColorDark(theme.backgroundColor)
     ? (theme.cardBackground || '#111827')
@@ -666,8 +681,10 @@ export default function PublicCatalogView({
 
   return (
     <div
-      className="min-h-screen bg-white text-stone-900 selection:bg-stone-900 selection:text-white"
+      className="min-h-screen selection:bg-stone-900 selection:text-white transition-colors"
       style={{
+        backgroundColor: pageBg,
+        color: pageTextColor,
         fontFamily: typo.bodyFont,
       }}
     >
@@ -680,12 +697,18 @@ export default function PublicCatalogView({
       )}
 
       {/* 1. Header Minimalista */}
-      <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md border-b border-stone-200/80 transition-all">
+      <header
+        className="sticky top-0 z-40 w-full backdrop-blur-md border-b transition-colors"
+        style={{
+          backgroundColor: isBgDark ? `${pageBg}E6` : 'rgba(255, 255, 255, 0.95)',
+          borderBottomColor: isBgDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+        }}
+      >
         <div className="max-w-6xl mx-auto px-4 sm:px-8 h-16 sm:h-20 flex items-center justify-center">
           <Link href={`/${slug}`} className="inline-block text-center group">
             <h2
-              className="text-base sm:text-lg tracking-[0.25em] font-medium text-stone-900 uppercase"
-              style={{ fontFamily: typo.titleFont }}
+              className="text-base sm:text-lg tracking-[0.25em] font-medium uppercase"
+              style={{ fontFamily: typo.titleFont, color: pageTextColor }}
             >
               {catalog.storeName}
             </h2>
@@ -797,8 +820,14 @@ export default function PublicCatalogView({
         )}
       </section>
 
-      {/* 3. Navegação de Categorias em Ícones Circulares (Exatamente como nas referências) */}
-      <section className="sticky top-16 sm:top-20 z-30 bg-white/95 backdrop-blur-md py-4 border-b border-stone-100 mb-6">
+      {/* 3. Navegação de Categorias em Ícones Circulares */}
+      <section
+        className="sticky top-16 sm:top-20 z-30 backdrop-blur-md py-4 border-b mb-6 transition-colors"
+        style={{
+          backgroundColor: isBgDark ? `${pageBg}E6` : 'rgba(255, 255, 255, 0.95)',
+          borderBottomColor: isBgDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)',
+        }}
+      >
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex items-center gap-3.5 sm:gap-6 overflow-x-auto scrollbar-none pb-1 justify-start sm:justify-center">
             {allCategories.map((cat) => {
@@ -814,21 +843,29 @@ export default function PublicCatalogView({
                   className="group flex flex-col items-center gap-1.5 shrink-0 transition-all focus:outline-hidden"
                 >
                   <div
-                    className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center transition-all ${isSelected
-                        ? 'shadow-md scale-105 text-white'
-                        : 'bg-stone-50 hover:bg-stone-100 text-stone-600 hover:text-stone-900 border border-stone-200/80 hover:border-stone-400'
-                      }`}
+                    className="w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center transition-all border"
                     style={
                       isSelected
-                        ? { backgroundColor: theme.primaryColor }
-                        : {}
+                        ? {
+                            backgroundColor: btnBg,
+                            color: btnTextColor,
+                            borderColor: btnBg,
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                          }
+                        : {
+                            backgroundColor: isBgDark ? 'rgba(255, 255, 255, 0.08)' : '#F5F5F4',
+                            color: pageTextColor,
+                            borderColor: isBgDark ? 'rgba(255, 255, 255, 0.12)' : '#E7E5E4',
+                          }
                     }
                   >
                     <IconComp className="w-6 h-6 sm:w-7 sm:h-7 transition-transform group-hover:scale-110" />
                   </div>
                   <span
-                    className={`text-[11px] sm:text-xs font-sans tracking-tight truncate max-w-[76px] sm:max-w-[84px] text-center ${isSelected ? 'font-bold text-stone-950' : 'font-medium text-stone-600 group-hover:text-stone-900'
-                      }`}
+                    className={`text-[11px] sm:text-xs font-sans tracking-tight truncate max-w-[76px] sm:max-w-[84px] text-center ${
+                      isSelected ? 'font-bold' : 'font-medium'
+                    }`}
+                    style={{ color: isSelected ? pageTextColor : pageMutedColor }}
                   >
                     {displayLabel}
                   </span>
@@ -844,12 +881,15 @@ export default function PublicCatalogView({
         {/* Título de Seção "Destaques da Semana" */}
         <div id="catalogo-produtos" className="scroll-mt-36 mb-6 flex items-end justify-between">
           <div>
-            <span className="text-[10px] font-sans tracking-widest uppercase font-semibold text-stone-400 block mb-0.5">
+            <span
+              className="text-[10px] font-sans tracking-widest uppercase font-semibold block mb-0.5"
+              style={{ color: pageMutedColor }}
+            >
               {activeCategory === 'TODAS' ? 'Catálogo' : 'Categoria'}
             </span>
             <h2
-              className="text-lg sm:text-2xl font-bold text-stone-900"
-              style={{ fontFamily: typo.titleFont }}
+              className="text-lg sm:text-2xl font-bold"
+              style={{ fontFamily: typo.titleFont, color: pageTextColor }}
             >
               {activeCategory === 'TODAS' ? 'Destaques da Semana' : activeCategory}
             </h2>
@@ -862,7 +902,8 @@ export default function PublicCatalogView({
                 setActiveCategory('TODAS');
                 setSearchTerm('');
               }}
-              className="text-xs font-sans font-semibold text-stone-500 hover:text-stone-900 flex items-center gap-1 transition-colors"
+              className="text-xs font-sans font-semibold flex items-center gap-1 transition-colors hover:underline"
+              style={{ color: pageMutedColor }}
             >
               <span>Ver todos</span>
               <ChevronRight className="w-3.5 h-3.5" />
@@ -913,7 +954,15 @@ export default function PublicCatalogView({
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-6">
+          <div
+            className={
+              catalog.theme.layoutStyle === 'feed-1'
+                ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-8 max-w-xl sm:max-w-none mx-auto sm:mx-0'
+                : catalog.theme.layoutStyle === 'compact-list'
+                ? 'flex flex-col gap-3 max-w-2xl mx-auto'
+                : 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-6'
+            }
+          >
             {filteredProducts.map((product) => {
               const isFlash = isProductFlashPromo(product);
               const effectivePrice = getProductPrice(product, pricingMode);
@@ -922,11 +971,174 @@ export default function PublicCatalogView({
                 (isFlash || (product.discountPrice && product.discountPrice < product.price));
               const isSoldOut = isProductSoldOut(product);
 
+              if (catalog.theme.layoutStyle === 'compact-list') {
+                return (
+                  <div
+                    key={product.id}
+                    onClick={() => openProductModal(product)}
+                    className="group flex flex-row items-center justify-between cursor-pointer rounded-2xl p-3 border hover:shadow-md transition-all gap-3.5 relative"
+                    style={{
+                      backgroundColor: cardBg,
+                      borderColor: cardBorderColor,
+                      color: cardTextColor,
+                    }}
+                  >
+                    {/* Imagem do Produto Compacta */}
+                    <div className="relative w-20 h-20 sm:w-24 sm:h-24 bg-stone-100 rounded-xl overflow-hidden shrink-0">
+                      <img
+                        src={
+                          product.images?.[0] ||
+                          'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=600&auto=format&fit=crop&q=80'
+                        }
+                        alt={product.name}
+                        className={`w-full h-full object-cover transition-transform duration-300 ${
+                          isSoldOut ? 'grayscale-40 opacity-75' : 'group-hover:scale-105'
+                        }`}
+                        loading="lazy"
+                      />
+                      {isSoldOut ? (
+                        <span className="absolute inset-0 bg-black/60 text-white text-[8px] font-sans font-bold flex items-center justify-center">
+                          ESGOTADO
+                        </span>
+                      ) : product.badge ? (
+                        <span className="absolute top-1 left-1 bg-white/95 text-stone-900 text-[8px] font-sans font-bold px-1.5 py-0.2 rounded-full border border-stone-200 shadow-2xs">
+                          {product.badge}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    {/* Informações Centrais */}
+                    <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+                      <div>
+                        <span
+                          className="text-[9px] font-sans tracking-widest uppercase font-semibold block"
+                          style={{ color: cardMutedColor }}
+                        >
+                          {product.category || 'GERAL'}
+                        </span>
+                        <h3
+                          className="text-xs sm:text-sm font-semibold truncate transition-colors"
+                          style={{ fontFamily: typo.titleFont, color: cardTextColor }}
+                        >
+                          {product.name}
+                        </h3>
+                        {(product.isService || catalog.businessType === 'services') &&
+                          (product.durationFormatted || product.durationMinutes) && (
+                            <div
+                              className="flex items-center gap-1 text-[10px] font-medium pt-0.5"
+                              style={{ color: cardMutedColor }}
+                            >
+                              <Clock className="w-3 h-3 opacity-70" />
+                              <span>{product.durationFormatted || `${product.durationMinutes} min`}</span>
+                            </div>
+                          )}
+                      </div>
+
+                      <div className="pt-1">
+                        <div className="font-sans flex items-baseline gap-1.5">
+                          {pricingMode === 'atacado' ? (
+                            <>
+                              <span className="text-xs sm:text-sm font-bold text-amber-600">
+                                R$ {getProductPrice(product, 'atacado').toFixed(2)}
+                              </span>
+                              <span className="text-[10px] line-through" style={{ color: cardMutedColor }}>
+                                R$ {product.price.toFixed(2)}
+                              </span>
+                              <span className="text-[9px] text-amber-600 font-semibold">atacado</span>
+                            </>
+                          ) : hasDiscount ? (
+                            <>
+                              <span
+                                className="text-xs sm:text-sm font-bold"
+                                style={{ color: isFlash ? '#D97706' : cardTextColor }}
+                              >
+                                R$ {effectivePrice.toFixed(2)}
+                              </span>
+                              <span className="text-[10px] line-through" style={{ color: cardMutedColor }}>
+                                R$ {product.price.toFixed(2)}
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-xs sm:text-sm font-bold" style={{ color: cardTextColor }}>
+                              {product.servicePriceType === 'quote' ? 'Sob Orçamento' : `R$ ${product.price.toFixed(2)}`}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Botão de Ação Lateral */}
+                    <div className="shrink-0 flex flex-col items-end gap-1.5">
+                      <button
+                        type="button"
+                        onClick={(e) => toggleFavorite(product.id, e)}
+                        className="w-7 h-7 rounded-full flex items-center justify-center transition-colors border"
+                        style={{
+                          backgroundColor: isCardDark ? 'rgba(255,255,255,0.08)' : '#F5F5F4',
+                          borderColor: cardBorderColor,
+                          color: favorites.has(product.id) ? '#F43F5E' : cardMutedColor,
+                        }}
+                      >
+                        <Heart
+                          className={`w-3.5 h-3.5 ${
+                            favorites.has(product.id) ? 'fill-rose-500 text-rose-500' : 'currentColor'
+                          }`}
+                        />
+                      </button>
+
+                      {isSoldOut ? (
+                        <span
+                          className="px-2.5 py-1.5 rounded-xl text-[10px] font-sans font-semibold"
+                          style={{
+                            backgroundColor: isCardDark ? 'rgba(255,255,255,0.08)' : '#F5F5F4',
+                            color: cardMutedColor,
+                          }}
+                        >
+                          Esgotado
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (product.isService || catalog.businessType === 'services') {
+                              openProductModal(product);
+                            } else {
+                              addToCart(product, product.sizes?.[0], product.colors?.[0]);
+                              setNotificationToast(`"${product.name}" adicionado à sacola!`);
+                              setTimeout(() => setNotificationToast(null), 3000);
+                            }
+                          }}
+                          className="px-3 py-1.5 rounded-xl text-[11px] font-sans font-semibold transition-all flex items-center gap-1 shadow-2xs hover:opacity-90 active:scale-95"
+                          style={{ backgroundColor: btnBg, color: btnTextColor }}
+                        >
+                          {product.isService || catalog.businessType === 'services' ? (
+                            <Calendar className="w-3.5 h-3.5" />
+                          ) : (
+                            <ShoppingBag className="w-3.5 h-3.5" />
+                          )}
+                          <span>
+                            {product.isService || catalog.businessType === 'services'
+                              ? catalog.actionButtonLabel || 'Agendar'
+                              : catalog.actionButtonLabel || 'Adicionar'}
+                          </span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
+
               return (
                 <div
                   key={product.id}
                   onClick={() => openProductModal(product)}
-                  className="group flex flex-col justify-between cursor-pointer rounded-2xl p-2.5 sm:p-3 bg-white border border-stone-200/80 hover:border-stone-400 hover:shadow-md transition-all duration-300 relative"
+                  className="group flex flex-col justify-between cursor-pointer rounded-2xl p-2.5 sm:p-3 border hover:shadow-md transition-all duration-300 relative"
+                  style={{
+                    backgroundColor: cardBg,
+                    borderColor: cardBorderColor,
+                    color: cardTextColor,
+                  }}
                 >
                   {/* Imagem do Produto */}
                   <div className="relative w-full aspect-[4/5] bg-stone-100 rounded-xl overflow-hidden mb-2.5">
@@ -990,12 +1202,15 @@ export default function PublicCatalogView({
                   {/* Detalhes do Produto */}
                   <div className="space-y-1.5 flex-1 flex flex-col justify-between">
                     <div>
-                      <span className="text-[9px] font-sans tracking-widest text-stone-400 uppercase font-semibold block">
+                      <span
+                        className="text-[9px] font-sans tracking-widest uppercase font-semibold block"
+                        style={{ color: cardMutedColor }}
+                      >
                         {product.category || 'GERAL'}
                       </span>
                       <h3
-                        className="text-xs sm:text-sm font-medium text-stone-800 line-clamp-2 leading-snug group-hover:text-stone-950 transition-colors"
-                        style={{ fontFamily: typo.titleFont }}
+                        className="text-xs sm:text-sm font-medium line-clamp-2 leading-snug transition-colors"
+                        style={{ fontFamily: typo.titleFont, color: cardTextColor }}
                       >
                         {product.name}
                       </h3>
@@ -1003,8 +1218,11 @@ export default function PublicCatalogView({
                       {/* Duração se for serviço */}
                       {(product.isService || catalog.businessType === 'services') &&
                         (product.durationFormatted || product.durationMinutes) && (
-                          <div className="flex items-center gap-1 text-[10px] text-stone-500 font-medium pt-0.5">
-                            <Clock className="w-3 h-3 text-stone-400" />
+                          <div
+                            className="flex items-center gap-1 text-[10px] font-medium pt-0.5"
+                            style={{ color: cardMutedColor }}
+                          >
+                            <Clock className="w-3 h-3 opacity-70" />
                             <span>{product.durationFormatted || `${product.durationMinutes} min`}</span>
                           </div>
                         )}
@@ -1016,34 +1234,40 @@ export default function PublicCatalogView({
                         {pricingMode === 'atacado' ? (
                           <div>
                             <div className="flex items-baseline gap-1.5">
-                              <span className="text-xs sm:text-sm font-bold text-amber-950">
+                              <span className="text-xs sm:text-sm font-bold text-amber-600">
                                 R$ {getProductPrice(product, 'atacado').toFixed(2)}
                               </span>
-                              <span className="text-[10px] text-stone-400 line-through">
+                              <span className="text-[10px] line-through" style={{ color: cardMutedColor }}>
                                 R$ {product.price.toFixed(2)}
                               </span>
                             </div>
-                            <span className="text-[9px] text-amber-700 font-semibold block">
+                            <span className="text-[9px] text-amber-600 font-semibold block">
                               no atacado
                             </span>
                           </div>
                         ) : hasDiscount ? (
                           <div className="flex items-baseline gap-1.5">
-                            <span className={`text-xs sm:text-sm font-bold ${isFlash ? 'text-amber-700' : 'text-stone-900'}`}>
+                            <span
+                              className="text-xs sm:text-sm font-bold"
+                              style={{ color: isFlash ? '#D97706' : cardTextColor }}
+                            >
                               R$ {effectivePrice.toFixed(2)}
                             </span>
-                            <span className="text-[10px] text-stone-400 line-through">
+                            <span className="text-[10px] line-through" style={{ color: cardMutedColor }}>
                               R$ {product.price.toFixed(2)}
                             </span>
                           </div>
                         ) : (
                           <div>
                             {product.servicePriceType === 'starting_at' && (
-                              <span className="text-[9px] text-stone-400 font-semibold uppercase block">
+                              <span
+                                className="text-[9px] font-semibold uppercase block"
+                                style={{ color: cardMutedColor }}
+                              >
                                 A partir de
                               </span>
                             )}
-                            <span className="text-xs sm:text-sm font-bold text-stone-900">
+                            <span className="text-xs sm:text-sm font-bold" style={{ color: cardTextColor }}>
                               {product.servicePriceType === 'quote'
                                 ? 'Sob Orçamento'
                                 : `R$ ${product.price.toFixed(2)}`}
@@ -1058,7 +1282,12 @@ export default function PublicCatalogView({
                           type="button"
                           disabled
                           onClick={(e) => e.stopPropagation()}
-                          className="w-full py-2 rounded-xl text-[11px] font-sans font-semibold text-stone-400 bg-stone-100 cursor-not-allowed flex items-center justify-center gap-1 border border-stone-200/60"
+                          className="w-full py-2 rounded-xl text-[11px] font-sans font-semibold cursor-not-allowed flex items-center justify-center gap-1 border"
+                          style={{
+                            backgroundColor: isCardDark ? 'rgba(255,255,255,0.08)' : '#F5F5F4',
+                            borderColor: cardBorderColor,
+                            color: cardMutedColor,
+                          }}
                         >
                           <span>Esgotado</span>
                         </button>
@@ -1075,8 +1304,8 @@ export default function PublicCatalogView({
                               setTimeout(() => setNotificationToast(null), 3000);
                             }
                           }}
-                          className="w-full py-2 rounded-xl text-[11px] font-sans font-semibold text-white transition-all flex items-center justify-center gap-1.5 shadow-2xs hover:opacity-90 active:scale-98"
-                          style={{ backgroundColor: theme.primaryColor }}
+                          className="w-full py-2 rounded-xl text-[11px] font-sans font-semibold transition-all flex items-center justify-center gap-1.5 shadow-2xs hover:opacity-90 active:scale-98"
+                          style={{ backgroundColor: btnBg, color: btnTextColor }}
                           title={
                             product.isService || catalog.businessType === 'services'
                               ? catalog.actionButtonLabel || 'Agendar Horário'
@@ -1951,10 +2180,14 @@ export default function PublicCatalogView({
           <button
             type="button"
             onClick={() => setIsCartOpen(true)}
-            className="w-full p-3.5 rounded-full bg-stone-900 text-white shadow-2xl flex items-center justify-between px-5 font-sans transition-all hover:scale-[1.02]"
+            className="w-full p-3.5 rounded-full shadow-2xl flex items-center justify-between px-5 font-sans transition-all hover:scale-[1.02]"
+            style={{ backgroundColor: btnBg, color: btnTextColor }}
           >
             <div className="flex items-center gap-2.5">
-              <span className="w-6 h-6 rounded-full bg-white text-stone-900 font-bold text-xs flex items-center justify-center">
+              <span
+                className="w-6 h-6 rounded-full font-bold text-xs flex items-center justify-center shadow-xs"
+                style={{ backgroundColor: btnTextColor, color: btnBg }}
+              >
                 {totalItemCount}
               </span>
               <span className="text-xs font-semibold">Meu Carrinho</span>
@@ -1966,35 +2199,72 @@ export default function PublicCatalogView({
 
       {/* Barra de Reafirmação e Confiança (apenas produtos físicos) */}
       {!isServicesCatalog && (
-        <section className="border-t border-stone-200/80 bg-stone-50/60 py-8 px-4 mt-8">
+        <section
+          className="border-t py-8 px-4 mt-8 transition-colors"
+          style={{
+            backgroundColor: isBgDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+            borderColor: isBgDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+          }}
+        >
           <div className="max-w-4xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-6 text-center sm:text-left">
             <div className="flex items-center justify-center sm:justify-start gap-3">
-              <div className="w-10 h-10 rounded-full bg-white border border-stone-200 shadow-2xs flex items-center justify-center text-stone-800 shrink-0">
-                <ShieldCheck className="w-5 h-5 text-emerald-600" />
+              <div
+                className="w-10 h-10 rounded-full border shadow-2xs flex items-center justify-center shrink-0"
+                style={{
+                  backgroundColor: isCardDark ? 'rgba(255,255,255,0.08)' : '#FFFFFF',
+                  borderColor: cardBorderColor,
+                }}
+              >
+                <ShieldCheck className="w-5 h-5 text-emerald-500" />
               </div>
               <div>
-                <h4 className="text-xs font-bold text-stone-900 font-sans">Compra 100% Segura</h4>
-                <p className="text-[11px] text-stone-500 font-sans">Privacidade e atendimento direto</p>
+                <h4 className="text-xs font-bold font-sans" style={{ color: pageTextColor }}>
+                  Compra 100% Segura
+                </h4>
+                <p className="text-[11px] font-sans" style={{ color: pageMutedColor }}>
+                  Privacidade e atendimento direto
+                </p>
               </div>
             </div>
 
             <div className="flex items-center justify-center sm:justify-start gap-3">
-              <div className="w-10 h-10 rounded-full bg-white border border-stone-200 shadow-2xs flex items-center justify-center text-stone-800 shrink-0">
-                <Truck className="w-5 h-5 text-stone-700" />
+              <div
+                className="w-10 h-10 rounded-full border shadow-2xs flex items-center justify-center shrink-0"
+                style={{
+                  backgroundColor: isCardDark ? 'rgba(255,255,255,0.08)' : '#FFFFFF',
+                  borderColor: cardBorderColor,
+                  color: pageTextColor,
+                }}
+              >
+                <Truck className="w-5 h-5 opacity-80" />
               </div>
               <div>
-                <h4 className="text-xs font-bold text-stone-900 font-sans">Entrega Rápida</h4>
-                <p className="text-[11px] text-stone-500 font-sans">Envios para todo o Brasil</p>
+                <h4 className="text-xs font-bold font-sans" style={{ color: pageTextColor }}>
+                  Entrega Rápida
+                </h4>
+                <p className="text-[11px] font-sans" style={{ color: pageMutedColor }}>
+                  Envios para todo o Brasil
+                </p>
               </div>
             </div>
 
             <div className="flex items-center justify-center sm:justify-start gap-3">
-              <div className="w-10 h-10 rounded-full bg-white border border-stone-200 shadow-2xs flex items-center justify-center text-stone-800 shrink-0">
+              <div
+                className="w-10 h-10 rounded-full border shadow-2xs flex items-center justify-center shrink-0"
+                style={{
+                  backgroundColor: isCardDark ? 'rgba(255,255,255,0.08)' : '#FFFFFF',
+                  borderColor: cardBorderColor,
+                }}
+              >
                 <Star className="w-5 h-5 text-amber-500 fill-amber-400" />
               </div>
               <div>
-                <h4 className="text-xs font-bold text-stone-900 font-sans">Satisfação Garantida</h4>
-                <p className="text-[11px] text-stone-500 font-sans">Produtos selecionados com carinho</p>
+                <h4 className="text-xs font-bold font-sans" style={{ color: pageTextColor }}>
+                  Satisfação Garantida
+                </h4>
+                <p className="text-[11px] font-sans" style={{ color: pageMutedColor }}>
+                  Produtos selecionados com carinho
+                </p>
               </div>
             </div>
           </div>
@@ -2002,9 +2272,15 @@ export default function PublicCatalogView({
       )}
 
       {/* Rodapé Minimalista */}
-      <footer className="w-full border-t border-stone-100 py-10 text-center font-sans text-[11px] text-stone-400 space-y-1">
+      <footer
+        className="w-full border-t py-10 text-center font-sans text-[11px] space-y-1 transition-colors"
+        style={{
+          borderColor: isBgDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+          color: pageMutedColor,
+        }}
+      >
         <p>© {new Date().getFullYear()} {catalog.storeName} • Todos os direitos reservados</p>
-        <p className="text-[10px] text-stone-300">Criado com Vitryne</p>
+        <p className="text-[10px] opacity-70">Criado com Vitryne</p>
       </footer>
     </div>
   );

@@ -47,6 +47,21 @@ export default function LivePhonePreview({ config }: LivePhonePreviewProps) {
 
   const typo = getTypographyPreset(theme.typographyPresetId, theme.fontFamily);
 
+  // Cores dinâmicas para Fundo da Página, Cards, Textos e Botões
+  const pageBg = theme.backgroundColor || '#FAF8F5';
+  const isBgDark = isColorDark(pageBg);
+  const pageTextColor = theme.textColor || (isBgDark ? '#F8FAFC' : '#1C1917');
+  const pageMutedColor = isBgDark ? '#94A3B8' : '#78716C';
+
+  const cardBg = theme.cardBackground || (isBgDark ? '#1E293B' : '#FFFFFF');
+  const isCardDark = isColorDark(cardBg);
+  const cardTextColor = isCardDark ? '#F8FAFC' : (theme.textColor || '#1C1917');
+  const cardMutedColor = isCardDark ? '#94A3B8' : '#78716C';
+  const cardBorderColor = isCardDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)';
+
+  const btnBg = theme.primaryColor || '#4F46E5';
+  const btnTextColor = theme.buttonTextColor || (isColorDark(btnBg) ? '#FFFFFF' : '#111827');
+
   // Cores dinâmicas para o Card do Topo (Hero)
   const defaultHeroBg = theme.backgroundColor && isColorDark(theme.backgroundColor)
     ? (theme.cardBackground || '#111827')
@@ -172,26 +187,34 @@ export default function LivePhonePreview({ config }: LivePhonePreviewProps) {
 
   return (
     <div className="flex flex-col items-center">
-      {/* Smartphone Frame */}
-      <div className="w-[340px] h-[680px] bg-stone-900 rounded-[48px] p-3 shadow-2xl border-[4px] border-stone-800 relative flex flex-col overflow-hidden ring-1 ring-white/20">
+      {/* Smartphone Screen Simulator (Sem borda externa volumosa para não passar da tela) */}
+      <div
+        className="w-[325px] sm:w-[335px] h-[600px] rounded-[32px] shadow-2xl border border-slate-300/80 relative flex flex-col overflow-hidden ring-1 ring-black/5"
+        style={{
+          backgroundColor: pageBg,
+          color: pageTextColor,
+          fontFamily: typo.bodyFont,
+        }}
+      >
         {/* Dynamic Island */}
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 w-28 h-5 bg-black rounded-full z-30 flex items-center justify-center">
-          <div className="w-2.5 h-2.5 rounded-full bg-stone-900 mr-2" />
-          <div className="w-2 h-2 rounded-full bg-indigo-950/80" />
+        <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-24 h-4 bg-black rounded-full z-30 flex items-center justify-center pointer-events-none">
+          <div className="w-2 h-2 rounded-full bg-stone-900 mr-1.5" />
+          <div className="w-1.5 h-1.5 rounded-full bg-indigo-950/80" />
         </div>
 
-        {/* Screen Area */}
-        <div
-          className="w-full h-full rounded-[38px] overflow-y-auto flex flex-col scrollbar-none relative text-xs bg-white text-stone-900"
-          style={{
-            fontFamily: typo.bodyFont,
-          }}
-        >
+        {/* Scrollable Screen Content */}
+        <div className="w-full h-full overflow-y-auto flex flex-col scrollbar-none relative text-xs">
           {/* Top Bar Minimalista */}
-          <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md px-4 pt-7 pb-2.5 border-b border-stone-100 flex items-center justify-center">
+          <div
+            className="sticky top-0 z-20 backdrop-blur-md px-4 pt-6 pb-2 border-b flex items-center justify-center transition-colors"
+            style={{
+              backgroundColor: isBgDark ? `${pageBg}E6` : 'rgba(255, 255, 255, 0.95)',
+              borderBottomColor: isBgDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)',
+            }}
+          >
             <span
-              className="text-[11px] tracking-[0.2em] font-medium text-stone-900 uppercase block text-center"
-              style={{ fontFamily: typo.titleFont }}
+              className="text-[11px] tracking-[0.2em] font-medium uppercase block text-center"
+              style={{ fontFamily: typo.titleFont, color: pageTextColor }}
             >
               {config.storeName || 'BOUTIQUE'}
             </span>
@@ -283,8 +306,14 @@ export default function LivePhonePreview({ config }: LivePhonePreviewProps) {
             )}
           </div>
 
-          {/* Navegação de Categorias em Ícones Circulares (como na referência) */}
-          <div className="sticky top-[58px] z-10 bg-white/95 backdrop-blur-md px-3 py-2 border-b border-stone-100 flex items-center gap-2.5 overflow-x-auto scrollbar-none">
+          {/* Navegação de Categorias em Ícones Circulares */}
+          <div
+            className="sticky top-[49px] z-10 backdrop-blur-md px-3 py-2 border-b flex items-center gap-2.5 overflow-x-auto scrollbar-none transition-colors"
+            style={{
+              backgroundColor: isBgDark ? `${pageBg}E6` : 'rgba(255, 255, 255, 0.95)',
+              borderBottomColor: isBgDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)',
+            }}
+          >
             {allCategories.map((cat) => {
               const isSelected = activeCategory === cat;
               const IconComp = resolveTopicIcon(cat, config.topicIcons?.[cat]);
@@ -298,23 +327,29 @@ export default function LivePhonePreview({ config }: LivePhonePreviewProps) {
                   className="group flex flex-col items-center gap-1 shrink-0 transition-all focus:outline-hidden"
                 >
                   <div
-                    className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                      isSelected
-                        ? 'shadow-xs scale-105 text-white'
-                        : 'bg-stone-50 text-stone-600 border border-stone-200/80'
-                    }`}
+                    className="w-9 h-9 rounded-full flex items-center justify-center transition-all border"
                     style={
                       isSelected
-                        ? { backgroundColor: theme.primaryColor }
-                        : {}
+                        ? {
+                            backgroundColor: btnBg,
+                            color: btnTextColor,
+                            borderColor: btnBg,
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+                          }
+                        : {
+                            backgroundColor: isBgDark ? 'rgba(255, 255, 255, 0.08)' : '#F5F5F4',
+                            color: pageTextColor,
+                            borderColor: isBgDark ? 'rgba(255, 255, 255, 0.12)' : '#E7E5E4',
+                          }
                     }
                   >
                     <IconComp className="w-4 h-4" />
                   </div>
                   <span
                     className={`text-[8px] font-sans tracking-tight truncate max-w-[50px] text-center ${
-                      isSelected ? 'font-bold text-stone-950' : 'font-medium text-stone-500'
+                      isSelected ? 'font-bold' : 'font-medium'
                     }`}
+                    style={{ color: isSelected ? pageTextColor : pageMutedColor }}
                   >
                     {displayLabel}
                   </span>
@@ -326,8 +361,8 @@ export default function LivePhonePreview({ config }: LivePhonePreviewProps) {
           {/* Título de Seção "Destaques da Semana" */}
           <div className="px-3 pt-3 pb-1 flex items-center justify-between">
             <h3
-              className="text-xs font-bold text-stone-900"
-              style={{ fontFamily: typo.titleFont }}
+              className="text-xs font-bold"
+              style={{ fontFamily: typo.titleFont, color: pageTextColor }}
             >
               {activeCategory === 'TODAS' ? 'Destaques da Semana' : activeCategory}
             </h3>
@@ -335,7 +370,8 @@ export default function LivePhonePreview({ config }: LivePhonePreviewProps) {
               <button
                 type="button"
                 onClick={() => setActiveCategory('TODAS')}
-                className="text-[9px] font-sans text-stone-500 hover:text-stone-900"
+                className="text-[9px] font-sans hover:underline"
+                style={{ color: pageMutedColor }}
               >
                 Ver todos
               </button>
@@ -348,7 +384,7 @@ export default function LivePhonePreview({ config }: LivePhonePreviewProps) {
               <div className="py-12 px-3 text-center flex flex-col items-center justify-center space-y-2.5">
                 <div
                   className="w-11 h-11 rounded-2xl flex items-center justify-center shadow-2xs"
-                  style={{ backgroundColor: `${theme.primaryColor}15`, color: theme.primaryColor }}
+                  style={{ backgroundColor: `${btnBg}18`, color: btnBg }}
                 >
                   {config.businessType === 'services' ? (
                     <Calendar className="w-5 h-5 stroke-[1.5]" />
@@ -357,17 +393,274 @@ export default function LivePhonePreview({ config }: LivePhonePreviewProps) {
                   )}
                 </div>
                 <div className="space-y-1">
-                  <h5 className="text-[11px] font-bold text-stone-800">
+                  <h5 className="text-[11px] font-bold" style={{ color: pageTextColor }}>
                     {config.businessType === 'services'
                       ? 'Agenda pronta para receber horários'
                       : 'Vitrine pronta para receber peças'}
                   </h5>
-                  <p className="text-[9.5px] text-stone-400 max-w-[200px] mx-auto leading-relaxed">
+                  <p className="text-[9.5px] max-w-[200px] mx-auto leading-relaxed" style={{ color: pageMutedColor }}>
                     {config.businessType === 'services'
                       ? 'Cadastre seus procedimentos ou serviços para disponibilizar sua grade de horários aqui.'
                       : 'Cadastre seus produtos ou sincronize direto do Instagram para exibi-los aqui.'}
                   </p>
                 </div>
+              </div>
+            ) : theme.layoutStyle === 'feed-1' ? (
+              <div className="flex flex-col gap-3">
+                {filteredProducts.map((p, i) => {
+                  const currentPrice = getProductPrice(p, pricingMode);
+                  const retailPrice = p.discountPrice || p.price;
+                  const wholesalePercent = getWholesaleDiscountPercent(p);
+                  const isSoldOut = isProductSoldOut(p);
+                  const isFlash = isProductFlashPromo(p);
+                  const isService = p.isService || config.businessType === 'services';
+                  const actionBtnLabel = config.actionButtonLabel || (isService ? 'Agendar' : 'Adicionar');
+
+                  return (
+                    <div
+                      key={p.id || i}
+                      className="rounded-2xl p-2.5 shadow-2xs flex flex-col justify-between relative border transition-all"
+                      style={{
+                        backgroundColor: cardBg,
+                        borderColor: cardBorderColor,
+                        color: cardTextColor,
+                      }}
+                    >
+                      {/* Imagem Grande (Feed Style) */}
+                      <div className="relative w-full aspect-square bg-stone-100 rounded-xl overflow-hidden mb-2">
+                        <img
+                          src={
+                            p.images?.[0] ||
+                            'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=600&auto=format&fit=crop&q=80'
+                          }
+                          alt={p.name}
+                          className={`w-full h-full object-cover ${isSoldOut ? 'grayscale-40 opacity-75' : ''}`}
+                          loading="lazy"
+                        />
+
+                        {/* Botão de Favorito */}
+                        <button
+                          type="button"
+                          onClick={(e) => toggleFavorite(p.id, e)}
+                          className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white/90 backdrop-blur-xs flex items-center justify-center text-stone-500 shadow-2xs z-10"
+                        >
+                          <Heart
+                            className={`w-3.5 h-3.5 ${
+                              favorites.has(p.id) ? 'fill-rose-500 text-rose-500' : 'text-stone-500'
+                            }`}
+                          />
+                        </button>
+
+                        {isSoldOut ? (
+                          <span className="absolute top-2 left-2 bg-stone-900/90 text-white text-[8px] font-sans font-bold px-2 py-0.5 rounded-full border border-stone-700">
+                            ESGOTADO
+                          </span>
+                        ) : p.badge ? (
+                          <span className="absolute top-2 left-2 bg-white/95 text-stone-900 text-[8px] font-sans font-bold px-2 py-0.5 rounded-full border border-stone-200/90 shadow-2xs flex items-center gap-0.5">
+                            <Sparkles className="w-2.5 h-2.5 text-amber-500 fill-amber-400" />
+                            <span>{p.badge}</span>
+                          </span>
+                        ) : null}
+
+                        {!isSoldOut && (
+                          pricingMode === 'atacado' ? (
+                            <span className="absolute bottom-2 left-2 bg-amber-600 text-white text-[8px] font-sans font-bold px-2 py-0.5 rounded-full shadow-2xs">
+                              -{wholesalePercent}%
+                            </span>
+                          ) : isFlash ? (
+                            <span className="absolute bottom-2 left-2 bg-amber-600 text-white text-[8px] font-sans font-bold px-2 py-0.5 rounded-full shadow-2xs flex items-center gap-0.5">
+                              <Zap className="w-2.5 h-2.5 fill-current" />
+                              <span>-{globalScheduledDiscount?.discountPercent ?? 10}%</span>
+                            </span>
+                          ) : p.discountPrice && p.discountPrice < p.price ? (
+                            <span className="absolute bottom-2 left-2 bg-stone-900 text-white text-[8px] font-sans font-bold px-2 py-0.5 rounded-full shadow-2xs">
+                              PROMO
+                            </span>
+                          ) : null
+                        )}
+                      </div>
+
+                      {/* Detalhes com Foto Grande */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <h4
+                            className="text-xs font-semibold leading-tight line-clamp-2"
+                            style={{ fontFamily: typo.titleFont, color: cardTextColor }}
+                          >
+                            {p.name}
+                          </h4>
+                          {isService && (p.durationFormatted || p.durationMinutes) && (
+                            <div
+                              className="flex items-center gap-1 text-[8px] font-medium shrink-0 pt-0.5"
+                              style={{ color: cardMutedColor }}
+                            >
+                              <Clock className="w-2.5 h-2.5 opacity-70" />
+                              <span>{p.durationFormatted || `${p.durationMinutes} min`}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="pt-1 flex items-center justify-between gap-2">
+                          <div>
+                            <span
+                              className="font-sans font-bold text-xs block"
+                              style={{
+                                color: isFlash && pricingMode === 'varejo' ? '#D97706' : cardTextColor,
+                              }}
+                            >
+                              {p.servicePriceType === 'starting_at' ? 'A partir de ' : ''}
+                              R$ {currentPrice.toFixed(2)}
+                              {pricingMode === 'atacado' && (
+                                <span className="text-[8px] font-normal text-amber-600 ml-0.5">un</span>
+                              )}
+                            </span>
+                            {((pricingMode === 'atacado' && retailPrice > currentPrice) ||
+                              (pricingMode === 'varejo' && p.price > currentPrice)) && (
+                              <span
+                                className="text-[8px] line-through block"
+                                style={{ color: cardMutedColor }}
+                              >
+                                R$ {p.price.toFixed(2)}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Botão de Ação */}
+                          {isSoldOut ? (
+                            <span
+                              className="py-1 px-3 rounded-lg text-[8px] font-sans font-semibold text-center block"
+                              style={{
+                                backgroundColor: isCardDark ? 'rgba(255,255,255,0.08)' : '#F5F5F4',
+                                color: cardMutedColor,
+                              }}
+                            >
+                              Esgotado
+                            </span>
+                          ) : (
+                            <span
+                              className="py-1.5 px-3 rounded-lg text-[9px] font-sans font-semibold flex items-center justify-center gap-1 shadow-2xs"
+                              style={{
+                                backgroundColor: btnBg,
+                                color: btnTextColor,
+                              }}
+                            >
+                              {isService ? (
+                                <Calendar className="w-3 h-3" />
+                              ) : (
+                                <ShoppingBag className="w-3 h-3" />
+                              )}
+                              <span>{actionBtnLabel}</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : theme.layoutStyle === 'compact-list' ? (
+              <div className="flex flex-col gap-2">
+                {filteredProducts.map((p, i) => {
+                  const currentPrice = getProductPrice(p, pricingMode);
+                  const retailPrice = p.discountPrice || p.price;
+                  const isSoldOut = isProductSoldOut(p);
+                  const isFlash = isProductFlashPromo(p);
+                  const isService = p.isService || config.businessType === 'services';
+                  const actionBtnLabel = config.actionButtonLabel || (isService ? 'Agendar' : 'Adicionar');
+
+                  return (
+                    <div
+                      key={p.id || i}
+                      className="rounded-xl p-2 shadow-2xs flex items-center gap-2.5 relative border transition-all"
+                      style={{
+                        backgroundColor: cardBg,
+                        borderColor: cardBorderColor,
+                        color: cardTextColor,
+                      }}
+                    >
+                      {/* Miniatura do Produto */}
+                      <div className="relative w-16 h-16 rounded-lg overflow-hidden shrink-0 bg-stone-100">
+                        <img
+                          src={
+                            p.images?.[0] ||
+                            'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=600&auto=format&fit=crop&q=80'
+                          }
+                          alt={p.name}
+                          className={`w-full h-full object-cover ${isSoldOut ? 'grayscale-40 opacity-75' : ''}`}
+                          loading="lazy"
+                        />
+                        {isSoldOut && (
+                          <span className="absolute inset-0 bg-black/60 text-white text-[6px] font-sans font-bold flex items-center justify-center">
+                            ESGOTADO
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Informações Centrais */}
+                      <div className="flex-1 min-w-0 pr-1">
+                        <h4
+                          className="text-[10px] font-semibold truncate leading-tight"
+                          style={{ fontFamily: typo.titleFont, color: cardTextColor }}
+                        >
+                          {p.name}
+                        </h4>
+                        {isService && (p.durationFormatted || p.durationMinutes) && (
+                          <div
+                            className="flex items-center gap-1 text-[8px] font-medium mt-0.5"
+                            style={{ color: cardMutedColor }}
+                          >
+                            <Clock className="w-2 h-2 opacity-70" />
+                            <span>{p.durationFormatted || `${p.durationMinutes} min`}</span>
+                          </div>
+                        )}
+                        <div className="flex items-baseline gap-1 mt-0.5">
+                          <span
+                            className="font-sans font-bold text-[10px]"
+                            style={{
+                              color: isFlash && pricingMode === 'varejo' ? '#D97706' : cardTextColor,
+                            }}
+                          >
+                            R$ {currentPrice.toFixed(2)}
+                          </span>
+                          {retailPrice > currentPrice && (
+                            <span
+                              className="text-[7px] line-through"
+                              style={{ color: cardMutedColor }}
+                            >
+                              R$ {p.price.toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Botão de Ação Compacto */}
+                      <div className="shrink-0">
+                        {isSoldOut ? (
+                          <span
+                            className="px-2 py-1 rounded-md text-[8px] font-sans font-semibold"
+                            style={{
+                              backgroundColor: isCardDark ? 'rgba(255,255,255,0.08)' : '#F5F5F4',
+                              color: cardMutedColor,
+                            }}
+                          >
+                            Esgotado
+                          </span>
+                        ) : (
+                          <span
+                            className="px-2.5 py-1.5 rounded-lg text-[8px] font-sans font-semibold flex items-center gap-1 shadow-2xs"
+                            style={{
+                              backgroundColor: btnBg,
+                              color: btnTextColor,
+                            }}
+                          >
+                            {isService ? <Calendar className="w-2.5 h-2.5" /> : <ShoppingBag className="w-2.5 h-2.5" />}
+                            <span>{actionBtnLabel}</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-2">
@@ -383,7 +676,12 @@ export default function LivePhonePreview({ config }: LivePhonePreviewProps) {
                   return (
                     <div
                       key={p.id || i}
-                      className="rounded-xl p-2 bg-white border border-stone-200/80 shadow-2xs flex flex-col justify-between relative"
+                      className="rounded-xl p-2 shadow-2xs flex flex-col justify-between relative border transition-all"
+                      style={{
+                        backgroundColor: cardBg,
+                        borderColor: cardBorderColor,
+                        color: cardTextColor,
+                      }}
                     >
                       {/* Imagem */}
                       <div className="relative w-full aspect-[4/5] bg-stone-100 rounded-lg overflow-hidden mb-1.5">
@@ -442,48 +740,64 @@ export default function LivePhonePreview({ config }: LivePhonePreviewProps) {
                       {/* Detalhes */}
                       <div className="space-y-1">
                         <h4
-                          className="text-[10px] text-stone-800 line-clamp-2 leading-tight font-medium"
-                          style={{ fontFamily: typo.titleFont }}
+                          className="text-[10px] line-clamp-2 leading-tight font-medium"
+                          style={{ fontFamily: typo.titleFont, color: cardTextColor }}
                         >
                           {p.name}
                         </h4>
 
                         {/* Duração se for serviço */}
                         {isService && (p.durationFormatted || p.durationMinutes) && (
-                          <div className="flex items-center gap-1 text-[8px] text-stone-500 font-medium">
-                            <Clock className="w-2 h-2 text-stone-400" />
+                          <div
+                            className="flex items-center gap-1 text-[8px] font-medium"
+                            style={{ color: cardMutedColor }}
+                          >
+                            <Clock className="w-2 h-2 opacity-70" />
                             <span>{p.durationFormatted || `${p.durationMinutes} min`}</span>
                           </div>
                         )}
 
                         <div className="pt-1">
                           <span
-                            className={`font-sans font-bold text-[10px] block ${
-                              isFlash && pricingMode === 'varejo' ? 'text-amber-700' : 'text-stone-900'
-                            }`}
+                            className="font-sans font-bold text-[10px] block"
+                            style={{
+                              color: isFlash && pricingMode === 'varejo' ? '#D97706' : cardTextColor,
+                            }}
                           >
                             {p.servicePriceType === 'starting_at' ? 'A partir de ' : ''}
                             R$ {currentPrice.toFixed(2)}
                             {pricingMode === 'atacado' && (
-                              <span className="text-[7px] font-normal text-amber-700 ml-0.5">un</span>
+                              <span className="text-[7px] font-normal text-amber-600 ml-0.5">un</span>
                             )}
                           </span>
                           {((pricingMode === 'atacado' && retailPrice > currentPrice) ||
                             (pricingMode === 'varejo' && p.price > currentPrice)) && (
-                            <span className="text-[7px] text-stone-400 line-through block">
+                            <span
+                              className="text-[7px] line-through block"
+                              style={{ color: cardMutedColor }}
+                            >
                               R$ {p.price.toFixed(2)}
                             </span>
                           )}
 
                           {/* Botão de Ação (Adicionar ou Agendar) */}
                           {isSoldOut ? (
-                            <span className="w-full mt-1.5 py-1 rounded-lg bg-stone-100 text-stone-400 text-[8px] font-sans font-semibold text-center block">
+                            <span
+                              className="w-full mt-1.5 py-1 rounded-lg text-[8px] font-sans font-semibold text-center block"
+                              style={{
+                                backgroundColor: isCardDark ? 'rgba(255,255,255,0.08)' : '#F5F5F4',
+                                color: cardMutedColor,
+                              }}
+                            >
                               Esgotado
                             </span>
                           ) : (
                             <span
-                              className="w-full mt-1.5 py-1 rounded-lg text-white text-[8px] font-sans font-semibold flex items-center justify-center gap-1 shadow-2xs"
-                              style={{ backgroundColor: theme.primaryColor }}
+                              className="w-full mt-1.5 py-1 rounded-lg text-[8px] font-sans font-semibold flex items-center justify-center gap-1 shadow-2xs"
+                              style={{
+                                backgroundColor: btnBg,
+                                color: btnTextColor,
+                              }}
                             >
                               {isService ? (
                                 <Calendar className="w-2.5 h-2.5" />
@@ -503,12 +817,21 @@ export default function LivePhonePreview({ config }: LivePhonePreviewProps) {
 
             {/* Barra de Reafirmação e Confiança no Rodapé (apenas produtos físicos) */}
             {config.businessType !== 'services' && (
-              <div className="mt-4 mb-2 mx-1 pt-2.5 pb-2 border-t border-stone-200/80 bg-stone-50/70 rounded-xl px-2.5 text-center font-sans space-y-0.5">
-                <div className="flex items-center justify-center gap-1 text-[8.5px] font-bold text-stone-800">
-                  <ShieldCheck className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+              <div
+                className="mt-4 mb-2 mx-1 pt-2.5 pb-2 border rounded-xl px-2.5 text-center font-sans space-y-0.5 transition-colors"
+                style={{
+                  backgroundColor: isBgDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
+                  borderColor: isBgDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)',
+                }}
+              >
+                <div
+                  className="flex items-center justify-center gap-1 text-[8.5px] font-bold"
+                  style={{ color: pageTextColor }}
+                >
+                  <ShieldCheck className="w-2.5 h-2.5 text-emerald-500 shrink-0" />
                   <span>Compra 100% Segura • Entrega Rápida</span>
                 </div>
-                <p className="text-[7.5px] text-stone-400">
+                <p className="text-[7.5px]" style={{ color: pageMutedColor }}>
                   Satisfação garantida em todo o Brasil
                 </p>
               </div>
@@ -516,9 +839,15 @@ export default function LivePhonePreview({ config }: LivePhonePreviewProps) {
           </div>
 
           {/* Sticky Bottom Bar */}
-          <div className="sticky bottom-0 left-0 right-0 p-2.5 bg-white/95 backdrop-blur-md border-t border-stone-100 flex items-center justify-between font-sans">
+          <div
+            className="sticky bottom-0 left-0 right-0 p-2.5 backdrop-blur-md border-t flex items-center justify-between font-sans transition-colors"
+            style={{
+              backgroundColor: isBgDark ? `${pageBg}F2` : 'rgba(255, 255, 255, 0.95)',
+              borderTopColor: isBgDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)',
+            }}
+          >
             <div className="flex items-center gap-1.5 text-[10px]">
-              <span className="font-bold text-stone-900">
+              <span className="font-bold" style={{ color: pageTextColor }}>
                 {config.businessType === 'services' ? (
                   filteredProducts.length > 0 ? `${filteredProducts.length} serviços` : '0 serviços'
                 ) : filteredProducts.length > 0 ? (
@@ -531,8 +860,8 @@ export default function LivePhonePreview({ config }: LivePhonePreviewProps) {
                   ) : '1 item'
                 ) : '0 itens'}
               </span>
-              <span className="text-stone-400">•</span>
-              <span className="font-bold" style={{ color: theme.primaryColor }}>
+              <span style={{ color: pageMutedColor }}>•</span>
+              <span className="font-bold" style={{ color: btnBg }}>
                 {config.businessType === 'services'
                   ? 'Agendamento Direto'
                   : filteredProducts.length > 0
@@ -542,8 +871,8 @@ export default function LivePhonePreview({ config }: LivePhonePreviewProps) {
             </div>
 
             <div
-              className="px-3 py-1.5 rounded-full text-[10px] font-bold text-white shadow-xs"
-              style={{ backgroundColor: theme.primaryColor }}
+              className="px-3 py-1.5 rounded-full text-[10px] font-bold shadow-xs"
+              style={{ backgroundColor: btnBg, color: btnTextColor }}
             >
               {config.businessType === 'services' ? 'Agendar Agora' : 'Meu Carrinho'}
             </div>

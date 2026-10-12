@@ -8,7 +8,7 @@ import { CatalogConfig } from '@/lib/catalog/types';
 export default function OnboardingPage() {
   const router = useRouter();
 
-  const handleFinish = async (completedConfig: CatalogConfig) => {
+  const handleFinish = async (completedConfig: CatalogConfig, destination?: 'products' | 'dashboard') => {
     try {
       if (typeof window !== 'undefined') {
         localStorage.setItem('vitryne_catalog_config', JSON.stringify(completedConfig));
@@ -21,7 +21,11 @@ export default function OnboardingPage() {
         body: JSON.stringify(completedConfig),
       });
 
-      router.push('/catalogo');
+      if (destination === 'dashboard') {
+        router.push('/dashboard');
+      } else {
+        router.push('/catalogo?tab=products');
+      }
     } catch (e) {
       console.error('Erro ao salvar onboarding:', e);
       router.push('/catalogo');
