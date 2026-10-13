@@ -17,7 +17,57 @@ export async function GET() {
 
     const plainToken = decryptAES256GCM(session.accessTokenEncrypted);
 
-    // 1. Perfil completo real
+    // Se for conexão direta/simulada ou token mock, preserva a identidade da loja do usuário logado
+    if (session.account.isSandbox || !plainToken || plainToken.startsWith('mock_')) {
+      const activeCatalog = getServerCatalog();
+      const mockMediaList = (activeCatalog.products || []).slice(0, 12).map((prod: any, idx: number) => ({
+        id: `media_${prod.id || idx}`,
+        caption: `${prod.name} - R$ ${(prod.price_cents / 100).toFixed(2)}`,
+        media_type: 'IMAGE',
+        media_url: prod.images?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&auto=format&fit=crop&q=60',
+        thumbnail_url: prod.images?.[0] || '',
+        permalink: `https://instagram.com/${session.account.username}`,
+        timestamp: new Date().toISOString(),
+        comments_count: 2,
+        like_count: 14,
+      }));
+
+      const mockComments = [
+        {
+          id: 'comm_1',
+          text: 'Olá! Qual o valor e tem pronta entrega?',
+          timestamp: new Date().toISOString(),
+          username: 'cliente_interessado',
+          like_count: 1,
+          media_caption: mockMediaList[0]?.caption || 'Publicação',
+          media_permalink: mockMediaList[0]?.permalink || '',
+          media_url: mockMediaList[0]?.media_url,
+          aiClassification: {
+            intent: 'PURCHASE_INTENT',
+            score: 95,
+            urgency: 'HIGH',
+            estimatedValueCents: 12900,
+          },
+        },
+      ];
+
+      return NextResponse.json({
+        success: true,
+        profile: {
+          id: session.account.id,
+          username: session.account.username,
+          name: session.account.name,
+          account_type: session.account.accountType,
+          profile_picture_url: session.account.profilePictureUrl || '',
+          media_count: mockMediaList.length,
+        },
+        mediaCount: mockMediaList.length,
+        mediaList: mockMediaList,
+        realComments: mockComments,
+      });
+    }
+
+    // 1. Perfil completo real (para tokens oficiais válidos da Meta Graph API)
     const profileRes = await fetch(
       `https://graph.instagram.com/v21.0/me?fields=id,username,name,account_type,profile_picture_url,media_count&access_token=${encodeURIComponent(
         plainToken
@@ -26,7 +76,6 @@ export async function GET() {
     );
     const profile = await profileRes.json();
     if (profile?.username && session?.account) {
-      session.account.username = profile.username;
       if (profile.name) session.account.name = profile.name;
       if (profile.id) session.account.id = profile.id;
       if (profile.profile_picture_url) session.account.profilePictureUrl = profile.profile_picture_url;

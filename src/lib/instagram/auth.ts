@@ -104,7 +104,50 @@ export function getAppBaseUrl(request?: { url: string; headers: { get(name: stri
  * Gera a URL oficial de autorização 100% no domínio do Instagram (Instagram Login for Business)
  * Elimina totalmente a tela do Facebook e abre diretamente o login e consentimento do Instagram.
  */
-export function getMetaOAuthUrl(redirectUri: string): { url: string; configured: boolean } {
+export function getMetaOAuthUrl(redirectUri: string): { url: string; configured: boolean; vercelUrl: string } {
+  const appId = process.env.INSTAGRAM_APP_ID || '985380497913934';
+  if (!appId || appId.includes('your-meta-app-id')) {
+    return {
+      url: '',
+      configured: false,
+      vercelUrl: '',
+    };
+  }
+
+  // Scopes oficiais do Instagram Login for Business da Meta
+  const scopes = [
+    'instagram_business_basic',
+    'instagram_business_manage_messages',
+    'instagram_business_manage_comments',
+    'instagram_business_content_publish',
+    'instagram_business_manage_insights',
+  ].join(',');
+
+  // URL Oficial com force_reauth=true: SEMPRE exige usuário e senha do Instagram para validar de verdade!
+  const url = `https://www.instagram.com/oauth/authorize?force_reauth=true&client_id=${encodeURIComponent(
+    appId
+  )}&redirect_uri=${encodeURIComponent(
+    redirectUri
+  )}&response_type=code&scope=${encodeURIComponent(
+    scopes
+  )}`;
+
+  const vercelRedirectUri = 'https://vitryne-ig.vercel.app/api/auth/instagram/callback';
+  const vercelUrl = `https://www.instagram.com/oauth/authorize?force_reauth=true&client_id=${encodeURIComponent(
+    appId
+  )}&redirect_uri=${encodeURIComponent(
+    vercelRedirectUri
+  )}&response_type=code&scope=${encodeURIComponent(
+    scopes
+  )}`;
+
+  return { url, configured: true, vercelUrl };
+}
+
+/**
+ * Gera a URL alternativa via Facebook Login Dialog (caso a conta use autenticação pelo Facebook)
+ */
+export function getFacebookDialogUrl(redirectUri: string): { url: string; configured: boolean } {
   const appId = process.env.INSTAGRAM_APP_ID;
   if (!appId || appId.includes('your-meta-app-id')) {
     return {
@@ -113,15 +156,15 @@ export function getMetaOAuthUrl(redirectUri: string): { url: string; configured:
     };
   }
 
-  // Scopes oficiais do Instagram Login for Business
   const scopes = [
-    'instagram_business_basic',
-    'instagram_business_manage_messages',
-    'instagram_business_manage_comments',
+    'instagram_basic',
+    'instagram_manage_messages',
+    'instagram_manage_comments',
+    'pages_show_list',
+    'pages_read_engagement',
   ].join(',');
 
-  // Endpoint 100% Instagram (Login for Business)
-  const url = `https://www.instagram.com/oauth/authorize?client_id=${encodeURIComponent(
+  const url = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${encodeURIComponent(
     appId
   )}&redirect_uri=${encodeURIComponent(
     redirectUri
@@ -248,23 +291,53 @@ export async function validateInstagramTokenWithMeta(token: string): Promise<{
     // Consulta inicial para pegar dados do perfil direto do Instagram ou via páginas do Facebook
     let instagramAccount: any = null;
 
-    // 1. Tentar diretamente na Graph API do Instagram (padrão para Instagram Business Login)
+    // 1. Tentar diretamente na Graph API do Instagram com campos completos
     try {
       const igDirectUrl = `https://graph.instagram.com/${GRAPH_API_VERSION}/me?fields=id,username,name,account_type,profile_picture_url&access_token=${encodeURIComponent(
         token
       )}`;
       const igRes = await fetch(igDirectUrl);
-      if (igRes.ok) {
-        const igData = await igRes.json();
-        if (igData.username || igData.id) {
-          instagramAccount = igData;
+      const igData = await igRes.json().catch(() => ({}));
+
+      if (igRes.ok && (igData.username || igData.id)) {
+        instagramAccount = igData;
+      } else {
+        console.error('[Meta graph.instagram.com /me full fields error]:', igRes.status, igData);
+
+        // Se falhou por conta não profissional
+        if (igData?.error?.message?.includes('business') || igData?.error?.code === 10 || igData?.error?.error_subcode === 2207001) {
+          return {
+            isValid: false,
+            error: 'Esta conta precisa ser Profissional (Comercial ou Criador de Conteúdo) no Instagram. Mude para conta profissional no app do Instagram e tente novamente.',
+            latencyMs: Date.now() - startTime,
+          };
+        }
+
+        // Tentativa 2: Apenas campos básicos seguros (id, username, account_type)
+        const fallbackUrl = `https://graph.instagram.com/${GRAPH_API_VERSION}/me?fields=id,username,account_type&access_token=${encodeURIComponent(
+          token
+        )}`;
+        const fbRes = await fetch(fallbackUrl);
+        const fbData = await fbRes.json().catch(() => ({}));
+        if (fbRes.ok && (fbData.username || fbData.id)) {
+          instagramAccount = fbData;
+        } else {
+          console.error('[Meta graph.instagram.com /me fallback error]:', fbRes.status, fbData);
+
+          // Tentativa 3: Somente id e username
+          const minUrl = `https://graph.instagram.com/me?fields=id,username&access_token=${encodeURIComponent(token)}`;
+          const minRes = await fetch(minUrl);
+          const minData = await minRes.json().catch(() => ({}));
+          if (minRes.ok && (minData.username || minData.id)) {
+            instagramAccount = minData;
+          }
         }
       }
     } catch (e) {
       console.warn('[graph.instagram.com direct query error]', e);
     }
 
-    // 2. Se não conseguiu direto, tentar via Facebook Graph API
+    // 2. Se não conseguiu direto no Instagram, tentar via Facebook Graph API (para tokens vinculados a Páginas)
     if (!instagramAccount) {
       const meUrl = `${GRAPH_API_URL}/me?fields=id,name,accounts{id,name,access_token,instagram_business_account{id,username,name,profile_picture_url}}&access_token=${encodeURIComponent(
         token
@@ -272,7 +345,7 @@ export async function validateInstagramTokenWithMeta(token: string): Promise<{
 
       const res = await fetch(meUrl);
       if (res.ok) {
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         if (data.accounts?.data && data.accounts.data.length > 0) {
           for (const page of data.accounts.data) {
             if (page.instagram_business_account) {
@@ -281,7 +354,7 @@ export async function validateInstagramTokenWithMeta(token: string): Promise<{
             }
           }
         }
-        if (!instagramAccount) {
+        if (!instagramAccount && data.id) {
           instagramAccount = { id: data.id, name: data.name, username: data.name?.toLowerCase().replace(/\s+/g, '_') };
         }
       }
@@ -292,7 +365,7 @@ export async function validateInstagramTokenWithMeta(token: string): Promise<{
     if (!instagramAccount) {
       return {
         isValid: false,
-        error: 'Não foi possível obter os dados do perfil do Instagram.',
+        error: 'Não foi possível obter os dados do perfil do Instagram. Verifique se sua conta é Comercial ou Criador de Conteúdo.',
         latencyMs,
       };
     }
@@ -347,9 +420,14 @@ export function getActiveInstagramSession(): InstagramSession | null {
     return null;
   }
 
+  // Se já existe uma sessão ativa (o lojista conectou sua loja), SEMPRE respeita ela!
+  if (global.__activeInstagramSession) {
+    return global.__activeInstagramSession;
+  }
+
+  // Fallback inicial apenas se absolutamente nenhuma sessão tiver sido criada ainda
   const envToken = process.env.INSTAGRAM_ACCESS_TOKEN?.trim();
   if (
-    (!global.__activeInstagramSession || global.__activeInstagramSession.account.isSandbox) &&
     envToken &&
     !envToken.includes('mock') &&
     (envToken.startsWith('IGA') || envToken.startsWith('EAA'))

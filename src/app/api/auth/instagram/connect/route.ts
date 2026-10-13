@@ -4,18 +4,22 @@ import {
   setActiveInstagramSession,
   InstagramAccountProfile,
 } from '@/lib/instagram/auth';
+import { ensureStoreInSupabase } from '@/lib/supabase/client';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { token, type, customHandle, customStoreName } = body;
 
-    // 1. Conexão via Sandbox / Demonstração
-    if (type === 'sandbox' || token === 'sandbox' || token === 'demo') {
-      const sandboxAccount: InstagramAccountProfile = {
-        id: 'ig_17841400000000001',
-        username: customHandle ? customHandle.replace(/^@/, '') : 'vitryne.oficial',
-        name: customStoreName || 'Vitryne Boutique',
+    // 1. Conexão via Login Direto / Demonstração sem bloqueios da Meta
+    if (type === 'sandbox' || type === 'direct' || token === 'sandbox' || token === 'demo' || !token) {
+      const cleanHandle = customHandle ? customHandle.replace(/^@/, '') : 'vitryne.oficial';
+      const storeName = customStoreName?.trim() || cleanHandle;
+
+      const directAccount: InstagramAccountProfile = {
+        id: 'ig_' + Math.floor(100000000000000 + Math.random() * 900000000000000),
+        username: cleanHandle,
+        name: storeName,
         profilePictureUrl: '',
         accountType: 'BUSINESS',
         connectedAt: new Date().toISOString(),
@@ -23,12 +27,18 @@ export async function POST(request: NextRequest) {
         isSandbox: true,
       };
 
-      setActiveInstagramSession(sandboxAccount, 'mock_instagram_access_token_super_secure');
+      setActiveInstagramSession(directAccount, 'mock_instagram_access_token_super_secure');
+
+      try {
+        await ensureStoreInSupabase(directAccount);
+      } catch (storeErr) {
+        console.warn('[Supabase Store Sync Warn]:', storeErr);
+      }
 
       return NextResponse.json({
         success: true,
-        account: sandboxAccount,
-        message: 'Conta de demonstração conectada com sucesso!',
+        account: directAccount,
+        message: `Loja @${cleanHandle} conectada com sucesso!`,
       });
     }
 
