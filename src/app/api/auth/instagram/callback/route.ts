@@ -30,9 +30,9 @@ export async function GET(request: NextRequest) {
 
   try {
     const redirectUri = `${origin}/api/auth/instagram/callback`;
-    const { accessToken } = await exchangeCodeForTokens(code, redirectUri);
+    const { accessToken, userId } = await exchangeCodeForTokens(code, redirectUri);
 
-    const validation = await validateInstagramTokenWithMeta(accessToken);
+    const validation = await validateInstagramTokenWithMeta(accessToken, userId);
     if (!validation.isValid || !validation.account) {
       throw new Error(validation.error || 'Não foi possível obter dados da conta do Instagram');
     }

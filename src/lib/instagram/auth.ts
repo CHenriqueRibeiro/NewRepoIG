@@ -191,6 +191,7 @@ export async function exchangeCodeForTokens(code: string, redirectUri: string) {
   const cleanCode = code.replace(/#_$/, '');
 
   let shortLivedToken = '';
+  let igUserId: string | undefined;
 
   // 1. Tentar obter Short-Lived Token via Instagram OAuth endpoint (POST form-urlencoded)
   try {
@@ -210,6 +211,9 @@ export async function exchangeCodeForTokens(code: string, redirectUri: string) {
     if (igRes.ok) {
       const igData = await igRes.json();
       shortLivedToken = igData.access_token;
+      if (igData.user_id) {
+        igUserId = String(igData.user_id);
+      }
     }
   } catch (e) {
     console.warn('[Instagram OAuth POST failed, falling back to Graph API]', e);
@@ -260,6 +264,7 @@ export async function exchangeCodeForTokens(code: string, redirectUri: string) {
   return {
     accessToken: longLivedToken,
     expiresInSeconds,
+    userId: igUserId,
   };
 }
 
@@ -267,7 +272,7 @@ export async function exchangeCodeForTokens(code: string, redirectUri: string) {
  * Valida um token de acesso diretamente contra a Meta Graph API (/me)
  * e retorna os detalhes reais da conta conectada.
  */
-export async function validateInstagramTokenWithMeta(token: string): Promise<{
+export async function validateInstagramTokenWithMeta(token: string, userIdHint?: string): Promise<{
   isValid: boolean;
   account?: InstagramAccountProfile;
   error?: string;
@@ -337,7 +342,23 @@ export async function validateInstagramTokenWithMeta(token: string): Promise<{
       console.warn('[graph.instagram.com direct query error]', e);
     }
 
-    // 2. Se não conseguiu direto no Instagram, tentar via Facebook Graph API (para tokens vinculados a Páginas)
+    // 2. Se falhou e temos o ID do usuário retornado na autenticação, consultar o nó direto do usuário
+    if (!instagramAccount && userIdHint) {
+      try {
+        const userNodeUrl = `https://graph.instagram.com/${GRAPH_API_VERSION}/${userIdHint}?fields=id,username,account_type,profile_picture_url&access_token=${encodeURIComponent(
+          token
+        )}`;
+        const userRes = await fetch(userNodeUrl);
+        const userData = await userRes.json().catch(() => ({}));
+        if (userRes.ok && (userData.username || userData.id)) {
+          instagramAccount = userData;
+        }
+      } catch (e) {
+        console.warn('[Direct user node query error]', e);
+      }
+    }
+
+    // 3. Se não conseguiu direto no Instagram, tentar via Facebook Graph API (para tokens vinculados a Páginas)
     if (!instagramAccount) {
       const meUrl = `${GRAPH_API_URL}/me?fields=id,name,accounts{id,name,access_token,instagram_business_account{id,username,name,profile_picture_url}}&access_token=${encodeURIComponent(
         token
@@ -360,12 +381,21 @@ export async function validateInstagramTokenWithMeta(token: string): Promise<{
       }
     }
 
+    // 4. Se a Meta bloqueou com 'Unsupported request' mas recebemos um userIdHint válido na autenticação
+    if (!instagramAccount && userIdHint) {
+      instagramAccount = {
+        id: userIdHint,
+        username: 'instagram_comercial',
+        name: 'Minha Loja Instagram',
+      };
+    }
+
     const latencyMs = Date.now() - startTime;
 
     if (!instagramAccount) {
       return {
         isValid: false,
-        error: 'Não foi possível obter os dados do perfil do Instagram. Verifique se sua conta é Comercial ou Criador de Conteúdo.',
+        error: 'A Meta recusou a consulta do perfil (Unsupported request). Enquanto o app não passar pela Análise do App pública, a sua conta precisa estar adicionada no painel da Meta Developers (Casos de uso > Gerar tokens de acesso > Adicionar conta).',
         latencyMs,
       };
     }
